@@ -25,7 +25,7 @@ public class Launcher extends Application {
 
             primaryStage.setScene(scene);
             primaryStage.setTitle("Bawabet Al-Quds");
-            primaryStage.getIcons().add(new Image("file:/home/yahya/IdeaProjects/DB_Proj/src/main/resources/app/db_proj/Logo.png"));
+            primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/app/db_proj/Logo.png")));
             primaryStage.setMaximized(true);
             primaryStage.show();
         } catch(Exception e) {

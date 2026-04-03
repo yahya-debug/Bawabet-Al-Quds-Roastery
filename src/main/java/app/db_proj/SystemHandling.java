@@ -16,6 +16,10 @@ public class SystemHandling {
     private Home_UI home_page;
     private Page curPage;
 
+    public Page getCurPage() {
+        return curPage;
+    }
+
     public SystemHandling() {
         curPage = Page.HOME;
 
