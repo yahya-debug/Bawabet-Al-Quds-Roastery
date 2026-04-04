@@ -81,6 +81,8 @@ public class Navigation_Bar {
             HBox.setHgrow(search_tf, Priority.ALWAYS);
             search_exec.setMaxHeight(Double.MAX_VALUE);
             retBox.setMaxHeight(45);
+            retBox.setPrefWidth(320);
+            retBox.setMaxWidth(320);
 
             return retBox;
         }
