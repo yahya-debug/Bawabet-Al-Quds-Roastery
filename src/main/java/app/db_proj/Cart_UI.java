@@ -38,7 +38,6 @@ public class Cart_UI {
         scrollPane.setFitToHeight(false);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        HBox.setHgrow(scrollPane, Priority.ALWAYS);
 
         // ── Right: fixed order-summary sidebar ───────────────────────────────
         VBox sidebar = makeSidebar();
@@ -49,8 +48,10 @@ public class Cart_UI {
         // ── Outer content row ────────────────────────────────────────────────
         HBox contentRow = new HBox(15, scrollPane, sidebar);
         contentRow.setPadding(new Insets(15));
-        // Make the sidebar fill the same height as the HBox
         sidebar.setMaxHeight(Double.MAX_VALUE);
+
+        // Left ScrollPane takes 60% of the content row width
+        scrollPane.prefWidthProperty().bind(contentRow.widthProperty().multiply(0.60));
 
         root.setCenter(contentRow);
     }
