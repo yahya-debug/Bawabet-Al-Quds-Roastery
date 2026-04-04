@@ -41,6 +41,7 @@ public class Navigation_Bar {
             sys.changePage(Page.HOME);
             HBox newRight = RightBlock(sys.isAuthenticated());
             Top.setRight(newRight);
+            Top.setCenter(null);
             BorderPane.setAlignment(newRight, Pos.CENTER);
         });
 
