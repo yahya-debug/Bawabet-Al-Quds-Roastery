@@ -36,12 +36,12 @@ public class Auth_UI {
         UI.getChildren().clear();
         if (login) {
             UI.getChildren().add(loginBox);
-            sys.getTop().getLogin().setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.7, 1), new CornerRadii(17), null)));
+            sys.getTop().getLogin().setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.85, 1), new CornerRadii(17), null)));
             sys.getTop().getSignUp().setBackground(Background.EMPTY);
             sys.getTop().getLogin().setBorder(Border.EMPTY);
         }  else {
             UI.getChildren().add(signBox);
-            sys.getTop().getSignUp().setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.7, 1), new CornerRadii(17), null)));
+            sys.getTop().getSignUp().setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.85, 1), new CornerRadii(17), null)));
             sys.getTop().getLogin().setBackground(Background.EMPTY);
             sys.getTop().getLogin().setBorder(Border.EMPTY);
         }
@@ -68,7 +68,7 @@ public class Auth_UI {
         l1.setFont(Font.font("Roboto", 16));
         l2.setFont(Font.font("Roboto", 16));
         l1.setTextFill(Color.hsb(0, 0, 0.75, 1));
-        l2.setTextFill(Color.hsb(48, 1, 0.7, 1));
+        l2.setTextFill(Color.hsb(48, 1, 0.85, 1));
         l2.setCursor(Cursor.HAND);
 
         little_switch.getChildren().addAll(l1, l2);
@@ -98,7 +98,7 @@ public class Auth_UI {
         business_btn.setTextFill(Color.WHITE);
 
         type_picker.setMaxWidth(Region.USE_PREF_SIZE);
-        personal_btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.7, 1), new CornerRadii(12), null)));
+        personal_btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.85, 1), new CornerRadii(12), null)));
         business_btn.setBackground(Background.EMPTY);
 
 
@@ -145,7 +145,7 @@ public class Auth_UI {
         l1.setFont(Font.font("Roboto", 16));
         l2.setFont(Font.font("Roboto", 16));
         l1.setTextFill(Color.hsb(0, 0, 0.75, 1));
-        l2.setTextFill(Color.hsb(48, 1, 0.7, 1));
+        l2.setTextFill(Color.hsb(48, 1, 0.85, 1));
         l2.setCursor(Cursor.HAND);
 
         little_switch.getChildren().addAll(l1, l2);
@@ -158,7 +158,7 @@ public class Auth_UI {
             UI.getChildren().clear();
             vb = Box("Sign Up", 10, Color.hsb(0, 0, .28, 1), 15);;
             vb.getChildren().addAll(type_picker, name, email, phone, password, btn, little_switch);
-            personal_btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.7, 1), new CornerRadii(12), null)));
+            personal_btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.85, 1), new CornerRadii(12), null)));
             business_btn.setBackground(Background.EMPTY);
             UI.getChildren().add(vb);
             personal_btn.setTextFill(Color.BLACK);
@@ -170,14 +170,13 @@ public class Auth_UI {
             UI.getChildren().clear();
             vb = Box("Sign Up", 10, Color.hsb(0, 0, .28, 1), 15);;
             vb.getChildren().addAll(type_picker, name, email, phone, password, location, kind_of_business, btn, little_switch);
-            business_btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.7, 1), new CornerRadii(12), null)));
+            business_btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.85, 1), new CornerRadii(12), null)));
             personal_btn.setBackground(Background.EMPTY);
             UI.getChildren().add(vb);
             personal_btn.setTextFill(Color.WHITE);
             business_btn.setTextFill(Color.BLACK);
             signBox = vb;
         });
-
 
         VBox.setMargin(btn, new Insets(7, 0, 0, 0));
         vb.getChildren().addAll(type_picker, name, email, phone, password, btn, little_switch);
@@ -191,7 +190,7 @@ public class Auth_UI {
 
         Label title_ = new Label(title);
         title_.setFont(Font.font("Adwaita Mono", FontWeight.EXTRA_BOLD, 25));
-        title_.setTextFill(Color.hsb(48, 1, 0.7, 1));
+        title_.setTextFill(Color.hsb(48, 1, 0.85, 1));
 
         VBox.setMargin(title_, new Insets(0, 0, 7, 0));
 
@@ -216,7 +215,7 @@ public class Auth_UI {
     }
     public Button FormBtn(String text) {
         Button btn = new Button(text);
-        btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, .7, 1), new CornerRadii(12), null)));
+        btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, .85, 1), new CornerRadii(12), null)));
         btn.setPadding(new Insets(7, 20, 7, 20));
         btn.setFont(Font.font("Roboto", 18));
         btn.setTextFill(Color.BLACK);

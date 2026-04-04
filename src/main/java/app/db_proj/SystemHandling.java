@@ -21,6 +21,7 @@ public class SystemHandling {
     }
 
     public SystemHandling() {
+        this.authenticated = true;
         curPage = Page.HOME;
 
         root = new BorderPane();

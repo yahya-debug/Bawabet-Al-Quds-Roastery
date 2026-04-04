@@ -28,8 +28,9 @@ public class Navigation_Bar {
         // initialize the nodes;
         Top = new BorderPane();
         titleBox = new HBox();
-        nav = new HBox(10);
+        nav = CenterBlock();
         right = RightBlock(sys.isAuthenticated());
+
 
 
         Top.setPadding(new Insets(20, 15, 15, 15));
@@ -39,12 +40,19 @@ public class Navigation_Bar {
         titleBox.setCursor(Cursor.HAND);
         titleBox.setOnMouseClicked(e -> {
             sys.changePage(Page.HOME);
-            Top.setRight(RightBlock(sys.isAuthenticated()));
+            right = RightBlock(sys.isAuthenticated());
+            nav = CenterBlock();
+
+            Top.setCenter(nav);
+            Top.setRight(right);
+            BorderPane.setAlignment(titleBox, Pos.CENTER);
+            BorderPane.setAlignment(nav, Pos.CENTER);
+            BorderPane.setAlignment(right, Pos.CENTER);
         });
 
         Label title = new Label("Bawabet Al-Quds");
         title.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 35));
-        title.setTextFill(Color.hsb(48, 1, .7, 1));
+        title.setTextFill(Color.hsb(48, 1, .85, 1));
 
 
         // append nodes
@@ -52,36 +60,25 @@ public class Navigation_Bar {
         Top.setLeft(titleBox);
         Top.setCenter(nav);
         Top.setRight(right);
-        BorderPane.setAlignment(title, Pos.CENTER);
+        BorderPane.setAlignment(titleBox, Pos.CENTER);
+        BorderPane.setAlignment(nav, Pos.CENTER);
         BorderPane.setAlignment(right, Pos.CENTER);
     }
 
     public HBox RightBlock(boolean authenticated) {
-        HBox retBox = new HBox(0);
+        HBox retBox = new HBox(10);
         retBox.setAlignment(Pos.CENTER);
         retBox.setPadding(new Insets(0));
         retBox.setMaxHeight(52);
+
         if (authenticated) {
-            TextField search_tf = new TextField();
-            search_tf.setPromptText("Search");
-            search_tf.setFont(Font.font("Adwaita Mono", 23));
-            search_tf.setBackground(null);
+            ImageView cart_icon = new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/icons8-shopping-cart-96.png")));
+            ImageView profile_icon = new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/icons8-profile-96.png")));
 
+            Button open_cart_btn = new Buttons(null, null, cart_icon, 48).getBtn();
+            Button open_profile_btn = new Buttons(null, null, profile_icon, 53).getBtn();
 
-            ImageView iv = new ImageView(new Image("file:/home/yahya/IdeaProjects/DB_Proj/target/classes/app/db_proj/search.png"));
-            iv.setFitHeight(25);
-            iv.setFitWidth(25);
-            Button search_exec = new Button(null, iv);
-            search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, .7, 1), new CornerRadii(12), null)));
-            search_exec.setPadding(new Insets(10));
-            search_exec.setCursor(Cursor.HAND);
-
-            retBox.getChildren().addAll(search_tf, search_exec);
-            retBox.setBackground(new Background(new BackgroundFill(Color.hsb(0, 0, 0.28, 1), new CornerRadii(12), null)));
-            HBox.setHgrow(search_tf, Priority.ALWAYS);
-            search_exec.setMaxHeight(Double.MAX_VALUE);
-            retBox.setMaxHeight(45);
-
+            retBox.getChildren().addAll(open_cart_btn, open_profile_btn);
             return retBox;
         }
 
@@ -91,11 +88,44 @@ public class Navigation_Bar {
         Auth.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 23));
         Auth.setTextFill(Color.hsb(0, 0, 0.75, 1));
         Auth.setTextFill(Color.hsb(215, 0.6, 0.14, 1));
-        Auth.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.7, 1), new CornerRadii(13), null)));
+        Auth.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.85, 1), new CornerRadii(13), null)));
         Auth.setCursor(Cursor.HAND);
 
         Auth.setOnAction(new GoToAuth(Page.Login, sys));
         retBox.getChildren().add(Auth);
+        return retBox;
+    }
+
+    public HBox CenterBlock() {
+        HBox retBox = new HBox(0);
+        retBox.setPrefWidth(400);
+        retBox.setMaxWidth(400);
+        retBox.setAlignment(Pos.CENTER);
+        retBox.setPadding(new Insets(0));
+        retBox.setMaxHeight(52);
+
+        TextField search_tf = new TextField();
+        search_tf.setPromptText("Search");
+        search_tf.setFont(Font.font("Roboto", 23));
+        search_tf.setBackground(null);
+        search_tf.setStyle("-fx-text-fill: white;");
+
+
+
+        ImageView iv = new ImageView(new Image("file:/home/yahya/IdeaProjects/DB_Proj/target/classes/app/db_proj/search.png"));
+        iv.setFitHeight(25);
+        iv.setFitWidth(25);
+        Button search_exec = new Button(null, iv);
+        search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, .85, 1), new CornerRadii(12), null)));
+        search_exec.setPadding(new Insets(10));
+        search_exec.setCursor(Cursor.HAND);
+
+        retBox.getChildren().addAll(search_tf, search_exec);
+        retBox.setBackground(new Background(new BackgroundFill(Color.hsb(0, 0, 0.28, 1), new CornerRadii(12), null)));
+        HBox.setHgrow(search_tf, Priority.ALWAYS);
+        search_exec.setMaxHeight(Double.MAX_VALUE);
+        retBox.setMaxHeight(45);
+
         return retBox;
     }
 
@@ -155,6 +185,7 @@ public class Navigation_Bar {
         @Override
         public void handle(ActionEvent event) {
             Top.setRight(Switch_auth());
+            Top.setCenter(null);
             sys.changePage(page);
         }
     }
