@@ -14,6 +14,7 @@ public class SystemHandling {
     private Navigation_Bar Top;
     private Auth_UI auth_page;
     private Home_UI home_page;
+    private Cart_UI cart_page;
     private Page curPage;
 
     public Page getCurPage() {
@@ -28,6 +29,7 @@ public class SystemHandling {
         Top = new Navigation_Bar(this);
         auth_page = new Auth_UI(this);
         home_page = new Home_UI(this);
+        cart_page = new Cart_UI(this);
 
         // work on root
         root.setTop(Top.getTop());
@@ -40,6 +42,7 @@ public class SystemHandling {
             case Login -> root.setCenter(auth_page.changePage(true).getUI());
             case SignUp -> root.setCenter(auth_page.changePage(false).getUI());
             case HOME -> root.setCenter(home_page.getSP());
+            case CART -> root.setCenter(cart_page.getRoot());
         }
         curPage = page;
 

@@ -76,6 +76,7 @@ public class Navigation_Bar {
             ImageView profile_icon = new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/icons8-profile-96.png")));
 
             Button open_cart_btn = new Buttons(null, null, cart_icon, 48).getBtn();
+            open_cart_btn.setOnAction(e -> sys.changePage(Page.CART));
             Button open_profile_btn = new Buttons(null, null, profile_icon, 53).getBtn();
 
             retBox.getChildren().addAll(open_cart_btn, open_profile_btn);
