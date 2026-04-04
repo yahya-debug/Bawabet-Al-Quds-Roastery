@@ -39,7 +39,9 @@ public class Navigation_Bar {
         titleBox.setCursor(Cursor.HAND);
         titleBox.setOnMouseClicked(e -> {
             sys.changePage(Page.HOME);
-            Top.setRight(RightBlock(sys.isAuthenticated()));
+            HBox newRight = RightBlock(sys.isAuthenticated());
+            Top.setRight(newRight);
+            BorderPane.setAlignment(newRight, Pos.CENTER);
         });
 
         Label title = new Label("Bawabet Al-Quds");
