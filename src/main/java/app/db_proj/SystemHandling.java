@@ -47,19 +47,23 @@ public class SystemHandling {
         curPage = page;
     }
 
-    /** Show a floating overlay panel on top of all content. */
+    /** Show a floating overlay panel centered on screen. */
     public void showOverlay(Node content) {
+        showOverlay(content, Pos.CENTER, Insets.EMPTY);
+    }
+
+    /** Show a floating overlay panel with custom position. */
+    public void showOverlay(Node content, Pos alignment, Insets margin) {
         hideOverlay(); // remove any existing overlay first
 
         // Semi-transparent full-screen backdrop — clicking it closes the overlay
         Region backdrop = new Region();
-        backdrop.setBackground(new Background(new BackgroundFill(Color.rgb(0, 0, 0, 0.45), null, null)));
+        backdrop.setBackground(new Background(new BackgroundFill(Color.rgb(0, 0, 0, 0.55), null, null)));
         backdrop.setOnMouseClicked(e -> hideOverlay());
 
-        // Position the content panel at the top-right, just below the nav bar
         StackPane overlay = new StackPane(backdrop, content);
-        StackPane.setAlignment(content, Pos.TOP_RIGHT);
-        StackPane.setMargin(content, new Insets(85, 15, 0, 0));
+        StackPane.setAlignment(content, alignment);
+        StackPane.setMargin(content, margin);
         overlay.setId("overlay");
 
         stackRoot.getChildren().add(overlay);
