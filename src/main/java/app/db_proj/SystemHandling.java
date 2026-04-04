@@ -1,8 +1,9 @@
 package app.db_proj;
 
-import javafx.scene.layout.Background;
-import javafx.scene.layout.BackgroundFill;
-import javafx.scene.layout.BorderPane;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 
 import java.util.HashMap;
@@ -11,6 +12,7 @@ public class SystemHandling {
     private boolean authenticated;
     private HashMap<String, String> Session; // here we will store our session (authentication, user, text in text fields data)
     private BorderPane root;
+    private StackPane stackRoot;
     private Navigation_Bar Top;
     private Auth_UI auth_page;
     private Home_UI home_page;
@@ -33,6 +35,7 @@ public class SystemHandling {
         root.setTop(Top.getTop());
         root.setBackground(new Background(new BackgroundFill(Color.hsb(215, 0.6, 0.14, 1), null, null)));
 
+        stackRoot = new StackPane(root);
     }
 
     public void changePage(Page page) {
@@ -42,15 +45,37 @@ public class SystemHandling {
             case HOME -> root.setCenter(home_page.getSP());
         }
         curPage = page;
+    }
 
+    /** Show a floating overlay panel on top of all content. */
+    public void showOverlay(Node content) {
+        hideOverlay(); // remove any existing overlay first
+
+        // Semi-transparent full-screen backdrop — clicking it closes the overlay
+        Region backdrop = new Region();
+        backdrop.setBackground(new Background(new BackgroundFill(Color.rgb(0, 0, 0, 0.45), null, null)));
+        backdrop.setOnMouseClicked(e -> hideOverlay());
+
+        // Position the content panel at the top-right, just below the nav bar
+        StackPane overlay = new StackPane(backdrop, content);
+        StackPane.setAlignment(content, Pos.TOP_RIGHT);
+        StackPane.setMargin(content, new Insets(85, 15, 0, 0));
+        overlay.setId("overlay");
+
+        stackRoot.getChildren().add(overlay);
+    }
+
+    /** Remove the overlay if one is currently shown. */
+    public void hideOverlay() {
+        stackRoot.getChildren().removeIf(n -> "overlay".equals(n.getId()));
     }
 
     public boolean isAuthenticated() {
         return authenticated;
     }
 
-    public BorderPane getRoot() {
-        return root;
+    public StackPane getRoot() {
+        return stackRoot;
     }
 
     public HashMap<String, String> getSession() {

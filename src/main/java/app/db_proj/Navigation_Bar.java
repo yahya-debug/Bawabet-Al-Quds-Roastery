@@ -5,7 +5,6 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -77,6 +76,9 @@ public class Navigation_Bar {
 
             Button open_cart_btn = new Buttons(null, null, cart_icon, 48).getBtn();
             Button open_profile_btn = new Buttons(null, null, profile_icon, 53).getBtn();
+
+            open_cart_btn.setOnAction(e -> sys.showOverlay(buildCartOverlay()));
+            open_profile_btn.setOnAction(e -> sys.showOverlay(buildProfileOverlay()));
 
             retBox.getChildren().addAll(open_cart_btn, open_profile_btn);
             return retBox;
@@ -177,6 +179,70 @@ public class Navigation_Bar {
         SignUp.setOnAction(new GoToAuth(Page.SignUp, sys));
         return retBox;
     }
+    /** Builds the floating cart panel shown when the cart button is clicked. */
+    private VBox buildCartOverlay() {
+        VBox box = new VBox(12);
+        box.setPadding(new Insets(20));
+        box.setMinWidth(300);
+        box.setBackground(new Background(new BackgroundFill(
+                Color.hsb(215, 0.55, 0.18, 1), new CornerRadii(14), null)));
+
+        Label title = new Label("Your Basket");
+        title.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 22));
+        title.setTextFill(Color.hsb(48, 1, 0.85, 1));
+
+        Label empty = new Label("Your cart is empty.");
+        empty.setFont(Font.font("Adwaita Mono", 16));
+        empty.setTextFill(Color.hsb(0, 0, 0.70, 1));
+
+        Button close = new Button("Close");
+        close.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 15));
+        close.setBackground(new Background(new BackgroundFill(
+                Color.hsb(48, 1, 0.75, 1), new CornerRadii(10), null)));
+        close.setPadding(new Insets(8, 18, 8, 18));
+        close.setCursor(Cursor.HAND);
+        close.setOnAction(e -> sys.hideOverlay());
+
+        box.getChildren().addAll(title, empty, close);
+        // Stop clicks inside the box from closing the backdrop
+        box.setOnMouseClicked(javafx.event.Event::consume);
+        return box;
+    }
+
+    /** Builds the floating profile panel shown when the profile button is clicked. */
+    private VBox buildProfileOverlay() {
+        VBox box = new VBox(12);
+        box.setPadding(new Insets(20));
+        box.setMinWidth(260);
+        box.setBackground(new Background(new BackgroundFill(
+                Color.hsb(215, 0.55, 0.18, 1), new CornerRadii(14), null)));
+
+        Label title = new Label("My Account");
+        title.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 22));
+        title.setTextFill(Color.hsb(48, 1, 0.85, 1));
+
+        Button logoutBtn = new Button("Log out");
+        logoutBtn.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 15));
+        logoutBtn.setBackground(new Background(new BackgroundFill(
+                Color.hsb(0, 0.65, 0.65, 1), new CornerRadii(10), null)));
+        logoutBtn.setPadding(new Insets(8, 18, 8, 18));
+        logoutBtn.setCursor(Cursor.HAND);
+        logoutBtn.setTextFill(Color.WHITE);
+        logoutBtn.setOnAction(e -> sys.hideOverlay());
+
+        Button close = new Button("Close");
+        close.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 15));
+        close.setBackground(new Background(new BackgroundFill(
+                Color.hsb(48, 1, 0.75, 1), new CornerRadii(10), null)));
+        close.setPadding(new Insets(8, 18, 8, 18));
+        close.setCursor(Cursor.HAND);
+        close.setOnAction(e -> sys.hideOverlay());
+
+        box.getChildren().addAll(title, logoutBtn, close);
+        box.setOnMouseClicked(javafx.event.Event::consume);
+        return box;
+    }
+
     class GoToAuth implements EventHandler<ActionEvent> {
         private Page page;
         public GoToAuth(Page page, SystemHandling sys) {
