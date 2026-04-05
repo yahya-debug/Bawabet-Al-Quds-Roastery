@@ -18,7 +18,7 @@ import javafx.scene.text.FontWeight;
 
 public class Navigation_Bar {
     private BorderPane Top;
-    private HBox titleBox, nav, right;
+    private HBox left, titleBox, nav, right;
     private SystemHandling sys;
     private Button Login, SignUp;
 
@@ -27,37 +27,46 @@ public class Navigation_Bar {
 
         // initialize the nodes;
         Top = new BorderPane();
+        left = new HBox(7);
         titleBox = new HBox();
         nav = CenterBlock();
         right = RightBlock(sys.isAuthenticated());
 
 
 
-        Top.setPadding(new Insets(20, 15, 15, 15));
+        Top.setPadding(new Insets(20, 15, 20, 15));
         titleBox.setPadding(new Insets(12));
-        titleBox.setAlignment(Pos.CENTER);
+        left.setAlignment(Pos.CENTER);
         titleBox.setBackground(new Background(new BackgroundFill(Color.hsb(0, 0, .28, 1), new CornerRadii(12), null)));
         titleBox.setCursor(Cursor.HAND);
+        Label title = new Label("Bawabet Al-Quds");
+        title.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 35));
+        title.setTextFill(Color.hsb(48, 1, .85, 1));
         titleBox.setOnMouseClicked(e -> {
             sys.changePage(Page.HOME);
             right = RightBlock(sys.isAuthenticated());
             nav = CenterBlock();
+            left.getChildren().clear();
 
+
+            left.getChildren().addAll(titleBox);
+
+
+            Top.setLeft(left);
             Top.setCenter(nav);
             Top.setRight(right);
-            BorderPane.setAlignment(titleBox, Pos.CENTER);
+            BorderPane.setAlignment(left, Pos.CENTER);
             BorderPane.setAlignment(nav, Pos.CENTER);
             BorderPane.setAlignment(right, Pos.CENTER);
+
         });
 
-        Label title = new Label("Bawabet Al-Quds");
-        title.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 35));
-        title.setTextFill(Color.hsb(48, 1, .85, 1));
 
 
         // append nodes
         titleBox.getChildren().add(title);
-        Top.setLeft(titleBox);
+        left.getChildren().add(titleBox);
+        Top.setLeft(left);
         Top.setCenter(nav);
         Top.setRight(right);
         BorderPane.setAlignment(titleBox, Pos.CENTER);
@@ -77,6 +86,8 @@ public class Navigation_Bar {
 
             Button open_cart_btn = new Buttons(null, null, cart_icon, 48).getBtn();
             Button open_profile_btn = new Buttons(null, null, profile_icon, 53).getBtn();
+
+            open_cart_btn.setOnAction(new GoToCart());
 
             retBox.getChildren().addAll(open_cart_btn, open_profile_btn);
             return retBox;
@@ -166,7 +177,7 @@ public class Navigation_Bar {
         HBox.setHgrow(Login, Priority.ALWAYS);
         Login.setMaxHeight(Double.MAX_VALUE);
         SignUp.setMaxHeight(Double.MAX_VALUE);
-        Login.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.7, 1), new CornerRadii(12), null)));
+        Login.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.85, 1), new CornerRadii(12), null)));
 
         Login.setCursor(Cursor.HAND);
         SignUp.setCursor(Cursor.HAND);
@@ -177,6 +188,10 @@ public class Navigation_Bar {
         SignUp.setOnAction(new GoToAuth(Page.SignUp, sys));
         return retBox;
     }
+
+
+
+    // Actions
     class GoToAuth implements EventHandler<ActionEvent> {
         private Page page;
         public GoToAuth(Page page, SystemHandling sys) {
@@ -187,6 +202,22 @@ public class Navigation_Bar {
             Top.setRight(Switch_auth());
             Top.setCenter(null);
             sys.changePage(page);
+        }
+    }
+    class GoToCart implements EventHandler<ActionEvent> {
+        @Override
+        public void handle(ActionEvent event) {
+            switch (sys.getCurPage()) {
+                case CART -> {
+                    return;
+                }
+            }
+            Label text = new Label("Cart");
+            text.setTextFill(Color.hsb(48, 1, .85, 1));
+            text.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 30));
+            left.getChildren().add(text);
+            Top.setCenter(null);
+            sys.changePage(Page.CART);
         }
     }
 

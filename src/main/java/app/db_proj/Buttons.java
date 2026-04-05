@@ -13,7 +13,7 @@ public class Buttons {
         btn = new Button(text);
         btn.setCursor(Cursor.HAND);
         if (bg == null)
-            btn.setBackground(Background.EMPTY);
+            btn.setStyle("-fx-background-color: transparent;");
         else btn.setBackground(new Background(bg));
     }
 
