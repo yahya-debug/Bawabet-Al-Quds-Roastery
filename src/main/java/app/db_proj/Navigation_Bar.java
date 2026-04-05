@@ -88,6 +88,7 @@ public class Navigation_Bar {
             Button open_profile_btn = new Buttons(null, null, profile_icon, 53).getBtn();
 
             open_cart_btn.setOnAction(new GoToCart());
+            open_profile_btn.setOnAction(e -> sys.showProfilePopup());
 
             retBox.getChildren().addAll(open_cart_btn, open_profile_btn);
             return retBox;

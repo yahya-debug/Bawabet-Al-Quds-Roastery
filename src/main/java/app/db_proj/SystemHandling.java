@@ -3,6 +3,7 @@ package app.db_proj;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 
 import java.util.HashMap;
@@ -10,6 +11,7 @@ import java.util.HashMap;
 public class SystemHandling {
     private boolean authenticated;
     private HashMap<String, String> Session; // here we will store our session (authentication, user, text in text fields data)
+    private StackPane outerRoot;
     private BorderPane root;
     private Navigation_Bar Top;
     private Auth_UI auth_page;
@@ -35,6 +37,7 @@ public class SystemHandling {
         root.setTop(Top.getTop());
         root.setBackground(new Background(new BackgroundFill(Color.hsb(215, 0.6, 0.14, 1), null, null)));
 
+        outerRoot = new StackPane(root);
     }
 
     public void changePage(Page page) {
@@ -48,12 +51,24 @@ public class SystemHandling {
 
     }
 
+    public void showProfilePopup() {
+        ProfilePopup popup = new ProfilePopup(this);
+        outerRoot.getChildren().add(popup.getOverlay());
+    }
+
+    public void hideProfilePopup() {
+        // Remove the topmost overlay (last child added)
+        if (outerRoot.getChildren().size() > 1) {
+            outerRoot.getChildren().remove(outerRoot.getChildren().size() - 1);
+        }
+    }
+
     public boolean isAuthenticated() {
         return authenticated;
     }
 
-    public BorderPane getRoot() {
-        return root;
+    public StackPane getRoot() {
+        return outerRoot;
     }
 
     public HashMap<String, String> getSession() {
