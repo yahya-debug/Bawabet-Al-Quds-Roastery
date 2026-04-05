@@ -13,7 +13,7 @@ public class Buttons {
         btn = new Button(text);
         btn.setCursor(Cursor.HAND);
         if (bg == null)
-            btn.setBackground(Background.EMPTY);
+            btn.setBackground(null);
         else btn.setBackground(new Background(bg));
     }
 
