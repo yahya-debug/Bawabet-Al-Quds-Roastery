@@ -65,8 +65,8 @@ public class Auth_UI {
         Label l1 = new Label("Don't have an account?");
         Label l2 = new Label("Sign Up.");
 
-        l1.setFont(Font.font("Roboto", 16));
-        l2.setFont(Font.font("Roboto", 16));
+        l1.setFont(Font.font("Roboto Rounded-MT", 16));
+        l2.setFont(Font.font("Roboto Rounded-MT", 16));
         l1.setTextFill(Color.hsb(0, 0, 0.75, 1));
         l2.setTextFill(Color.hsb(48, 1, 0.85, 1));
         l2.setCursor(Cursor.HAND);
@@ -115,6 +115,8 @@ public class Auth_UI {
         TextField phone = FormField("Phone, ...");
         TextField password = FormField("Password");
         TextField location = FormField("Street Num-Name, City, zip");
+        TextField tax_id = FormField("Tax ID");
+        TextField reg_number = FormField("Registration Number");
 
 
         // ComboBox styling
@@ -142,8 +144,8 @@ public class Auth_UI {
         Label l1 = new Label("Already have an account?");
         Label l2 = new Label("Login.");
 
-        l1.setFont(Font.font("Roboto", 16));
-        l2.setFont(Font.font("Roboto", 16));
+        l1.setFont(Font.font("Roboto Rounded-MT", 16));
+        l2.setFont(Font.font("Roboto Rounded-MT", 16));
         l1.setTextFill(Color.hsb(0, 0, 0.75, 1));
         l2.setTextFill(Color.hsb(48, 1, 0.85, 1));
         l2.setCursor(Cursor.HAND);
@@ -169,7 +171,7 @@ public class Auth_UI {
         business_btn.setOnAction(e -> {
             UI.getChildren().clear();
             vb = Box("Sign Up", 10, Color.hsb(0, 0, .28, 1), 15);;
-            vb.getChildren().addAll(type_picker, name, email, phone, password, location, kind_of_business, btn, little_switch);
+            vb.getChildren().addAll(type_picker, name, email, phone, password, location, kind_of_business, tax_id, reg_number, btn, little_switch);
             business_btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.85, 1), new CornerRadii(12), null)));
             personal_btn.setBackground(Background.EMPTY);
             UI.getChildren().add(vb);
@@ -208,7 +210,7 @@ public class Auth_UI {
     public TextField FormField(String text) {
         TextField tf = new TextField();
         tf.setPromptText(text);
-        tf.setFont(Font.font("Roboto", 17));
+        tf.setFont(Font.font("Roboto Rounded-MT", 17));
         tf.setBackground(new Background(new BackgroundFill(Color.hsb(215, 0.6, 0.14, 1), new CornerRadii(7), null)));
         tf.setStyle("-fx-text-fill: white;");
         return tf;
@@ -217,7 +219,7 @@ public class Auth_UI {
         Button btn = new Button(text);
         btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, .85, 1), new CornerRadii(12), null)));
         btn.setPadding(new Insets(7, 20, 7, 20));
-        btn.setFont(Font.font("Roboto", 18));
+        btn.setFont(Font.font("Roboto Rounded-MT", 18));
         btn.setTextFill(Color.BLACK);
         btn.setCursor(Cursor.HAND);
         btn.setMaxWidth(Double.MAX_VALUE);

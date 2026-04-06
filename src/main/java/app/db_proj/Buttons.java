@@ -5,6 +5,7 @@ import javafx.scene.control.Button;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
+import javafx.scene.text.Font;
 
 public class Buttons {
     private Button btn;
@@ -12,6 +13,7 @@ public class Buttons {
     public Buttons(String text, BackgroundFill bg) {
         btn = new Button(text);
         btn.setCursor(Cursor.HAND);
+        btn.setFont(Font.font("Roboto Rounded-MT"));
         if (bg == null)
             btn.setStyle("-fx-background-color: transparent;");
         else btn.setBackground(new Background(bg));

@@ -3,6 +3,7 @@ package app.db_proj;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 
 import java.util.HashMap;
@@ -15,7 +16,9 @@ public class SystemHandling {
     private Auth_UI auth_page;
     private Home_UI home_page;
     private CartUI cart_page;
+    private ProfileUI profile_page;
     private Page curPage;
+    private StackPane screen;
 
     public Page getCurPage() {
         return curPage;
@@ -26,6 +29,7 @@ public class SystemHandling {
         curPage = Page.HOME;
 
         root = new BorderPane();
+        screen = new StackPane(root);
         Top = new Navigation_Bar(this);
         auth_page = new Auth_UI(this);
         home_page = new Home_UI(this);
@@ -43,9 +47,20 @@ public class SystemHandling {
             case SignUp -> root.setCenter(auth_page.changePage(false).getUI());
             case HOME -> root.setCenter(home_page.getSP());
             case CART -> root.setCenter(cart_page.getScreen());
+            case PROFILE -> openProf();
         }
-        curPage = page;
 
+        // since the profile is a pop-up like screen; we dont need to consider it as a separated page
+        if (!page.equals(Page.PROFILE)) curPage = page;
+
+    }
+
+    public void openProf() {
+        profile_page = new ProfileUI(this);
+        screen.getChildren().add(profile_page.getSP());
+    }
+    public void hideProf() {
+        screen.getChildren().remove(screen.getChildren().size() - 1);
     }
 
     public boolean isAuthenticated() {
@@ -68,5 +83,8 @@ public class SystemHandling {
         return auth_page;
     }
 
+    public StackPane getScreen() {
+        return screen;
+    }
 }
 

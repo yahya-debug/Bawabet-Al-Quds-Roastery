@@ -88,6 +88,7 @@ public class Navigation_Bar {
             Button open_profile_btn = new Buttons(null, null, profile_icon, 53).getBtn();
 
             open_cart_btn.setOnAction(new GoToCart());
+            open_profile_btn.setOnAction(new GoToProf());
 
             retBox.getChildren().addAll(open_cart_btn, open_profile_btn);
             return retBox;
@@ -117,13 +118,13 @@ public class Navigation_Bar {
 
         TextField search_tf = new TextField();
         search_tf.setPromptText("Search");
-        search_tf.setFont(Font.font("Roboto", 23));
+        search_tf.setFont(Font.font("Roboto Rounded-MT", 23));
         search_tf.setBackground(null);
         search_tf.setStyle("-fx-text-fill: white;");
 
 
 
-        ImageView iv = new ImageView(new Image("file:/home/yahya/IdeaProjects/DB_Proj/target/classes/app/db_proj/search.png"));
+        ImageView iv = new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/search.png")));
         iv.setFitHeight(25);
         iv.setFitWidth(25);
         Button search_exec = new Button(null, iv);
@@ -218,6 +219,12 @@ public class Navigation_Bar {
             left.getChildren().add(text);
             Top.setCenter(null);
             sys.changePage(Page.CART);
+        }
+    }
+    class GoToProf implements EventHandler<ActionEvent> {
+        @Override
+        public void handle(ActionEvent event) {
+            sys.changePage(Page.PROFILE);
         }
     }
 

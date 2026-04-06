@@ -30,7 +30,7 @@ public class CartUI {
 
         cart_scroll = new VBox(10);
         Image img = new Image(getClass().getResourceAsStream("/app/db_proj/Logo.jpg"));
-        cart_scroll.getChildren().add(makeItemCard("Ethiopian Blend", 12.00, img));
+        cart_scroll.getChildren().add(makeItemCard("Cart Item", 12.00, img));
 
         SP = new ScrollPane(cart_scroll);
 
@@ -54,7 +54,7 @@ public class CartUI {
 
         TextField search_tf = new TextField();
         search_tf.setPromptText("Search in Cart");
-        search_tf.setFont(Font.font("Roboto", 20));
+        search_tf.setFont(Font.font("Roboto Rounded-MT", 20));
         search_tf.setBackground(null);
         search_tf.setStyle("-fx-text-fill: white;");
 
@@ -106,7 +106,7 @@ public class CartUI {
         Button onlineBtn  = new Button("Online");
         // Shared styling
         for (Button b : new Button[]{inStoreBtn, onlineBtn}) {
-            b.setFont(Font.font("Roboto", 15));
+            b.setFont(Font.font("Roboto Rounded-MT", 15));
             b.setPadding(new Insets(5, 14, 5, 14));
             b.setCursor(Cursor.HAND);
             b.setBackground(Background.EMPTY);
@@ -195,7 +195,7 @@ public class CartUI {
     private TextField formField(String prompt) {
         TextField tf = new TextField();
         tf.setPromptText(prompt);
-        tf.setFont(Font.font("Roboto", 15));
+        tf.setFont(Font.font("Roboto Rounded-MT", 15));
         tf.setBackground(new Background(new BackgroundFill(
                 Color.hsb(215, 0.6, 0.14, 1), new CornerRadii(7), null)));
         tf.setStyle("-fx-text-fill: white;");
@@ -225,7 +225,7 @@ public class CartUI {
         name.setTextFill(Color.WHITE);
 
         Label priceLabel = new Label(String.format("$%.2f", price));
-        priceLabel.setFont(Font.font("Roboto", 16));
+        priceLabel.setFont(Font.font("Roboto Rounded-MT", 16));
         priceLabel.setTextFill(Color.hsb(48, 1, 0.85, 1)); // gold
 
         info.getChildren().addAll(name, priceLabel);

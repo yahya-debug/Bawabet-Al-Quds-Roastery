@@ -6,6 +6,7 @@ public enum Page {
     Login("Login"),
     SignUp("SignUp"),
     CART("Cart"),
+    PROFILE("Profile"),
     ADMIN("Admin Panel"),
     ITEM_PAGE("Product Details");
 

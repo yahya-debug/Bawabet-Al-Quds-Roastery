@@ -20,7 +20,7 @@ public class Launcher extends Application {
             // init base blocks
 
 
-            Scene scene = new Scene(sys.getRoot());
+            Scene scene = new Scene(sys.getScreen());
 
 
             primaryStage.setScene(scene);
