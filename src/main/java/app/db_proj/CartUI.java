@@ -17,9 +17,11 @@ public class CartUI {
     private HBox screen;
     private StackPane root;
     private VBox cart_side, cart_scroll, payment_side;
-    private BorderPane payment_box;
+    private BorderPane payment_box, orders_box;
     private ScrollPane SP;
     private SystemHandling sys;
+    private Region spacer;
+
 
     public CartUI(SystemHandling sys) {
         this.sys = sys;
@@ -60,7 +62,7 @@ public class CartUI {
 
 
 
-        ImageView iv = new ImageView(new Image("file:/home/yahya/IdeaProjects/DB_Proj/target/classes/app/db_proj/search.png"));
+        ImageView iv = new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/search.png")));
         Button search_exec = new Buttons(null, new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(8), null), iv, 23).getBtn();
 
         searchBox.getChildren().addAll(search_tf, search_exec);
@@ -74,6 +76,7 @@ public class CartUI {
         filterBtn.setTextFill(Color.hsb(30, 0.12, 0.78, 1));
         filterBtn.setMaxHeight(45);
         filterBtn.setPrefWidth(90);
+        filterBtn.setCursor(Cursor.HAND);
         filterBtn.setOnMouseEntered(e -> filterBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(8), null))));
         filterBtn.setOnMouseExited(e -> filterBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(8), null))));
 
@@ -97,6 +100,17 @@ public class CartUI {
         });
         sortBox.setPrefHeight(45);
         sortBox.setPrefWidth(160);
+        sortBox.setCursor(Cursor.HAND);
+        sortBox.setOnMouseEntered(e -> sortBox.setStyle(
+            "-fx-background-color: hsb(35, 8%, 38%); " +
+            "-fx-font-family: 'Nunito'; -fx-font-size: 15px; " +
+            "-fx-background-radius: 8; -fx-border-radius: 8;"
+        ));
+        sortBox.setOnMouseExited(e -> sortBox.setStyle(
+            "-fx-background-color: hsb(35, 8%, 46%); " +
+            "-fx-font-family: 'Nunito'; -fx-font-size: 15px; " +
+            "-fx-background-radius: 8; -fx-border-radius: 8;"
+        ));
 
         HBox topBar = new HBox(8);
         HBox.setHgrow(searchBox, Priority.ALWAYS);
@@ -111,11 +125,18 @@ public class CartUI {
     }
 
     private void make_payment_side() {
-        Region spacer;
-        payment_side = new VBox(0);
+        payment_side = new VBox(10);
         payment_side.setPadding(new Insets(0, 15, 15, 15));
         payment_side.prefWidthProperty().bind(screen.widthProperty().multiply(.40));
 
+        make_payment_box();
+        make_order_box();
+
+
+        payment_side.getChildren().addAll(payment_box, orders_box);
+    }
+
+    private void make_payment_box() {
         payment_box = new BorderPane();
         payment_box.setPadding(new Insets(7));
         payment_box.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null)));
@@ -201,8 +222,40 @@ public class CartUI {
 
         bottom.getChildren().addAll(total, order_btn);
         payment_box.setBottom(bottom);
+    }
 
-        payment_side.getChildren().add(payment_box);
+    private void make_order_box() {
+        orders_box = new BorderPane();
+        orders_box.setPadding(new Insets(7));
+        orders_box.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null)));
+        orders_box.setMaxHeight(Double.MAX_VALUE);
+
+        HBox top = new HBox(0);
+        spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label title_in_box = new Labels("My Orders", Font.font("Adwaita Mono", FontWeight.BOLD, 30), Color.hsb(48, 1, 0.92, 1)).getLabel();
+        title_in_box.setPadding(new Insets(5));
+
+        Button toOrders = new Buttons(null, null, new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/expand.png"))), 38).getBtn();
+
+        top.setAlignment(Pos.CENTER);
+        top.setPadding(new Insets(0, 0, 7, 0));
+        top.getChildren().addAll(title_in_box, spacer, toOrders);
+
+        spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        orders_box.setTop(top);
+
+        VBox orders_vb = new VBox(7);
+        ScrollPane scroll_orders = new ScrollPane(orders_vb);
+        orders_vb.getChildren().addAll(makeOrderCard("Item", 15,  new Image(getClass().getResourceAsStream("/app/db_proj/Logo.jpg"))));
+        scroll_orders.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        scroll_orders.setFitToWidth(true);
+
+        orders_box.setCenter(scroll_orders);
+        VBox.setVgrow(orders_box, Priority.ALWAYS);
     }
 
 
@@ -275,10 +328,47 @@ public class CartUI {
             parent.getChildren().remove(card);
         });
 
+        card.setCursor(Cursor.HAND);
+        card.setOnMouseEntered(e -> card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(12), null))));
+        card.setOnMouseExited(e -> card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null))));
+
         card.getChildren().addAll(img, info, removeBtn);
         return card;
     }
 
+    private HBox makeOrderCard(String itemName, double price, Image itemImage) {
+        HBox card = new HBox(15);
+        card.setPrefWidth(Double.MAX_VALUE);
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.setPadding(new Insets(5));
+        card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null)));
+        card.setCursor(Cursor.HAND);
+        card.setOnMouseEntered(e -> card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(12), null))));
+        card.setOnMouseExited(e -> card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null))));
+
+        // Item image
+        ImageView img = new ImageView(itemImage);
+        img.setFitWidth(70);
+        img.setFitHeight(70);
+        img.setPreserveRatio(true);
+
+        // Name + price
+        VBox info = new VBox(6);
+        HBox.setHgrow(info, Priority.ALWAYS);
+
+        Label name = new Label(itemName);
+        name.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 17));
+        name.setTextFill(Color.WHITE);
+
+        Label priceLabel = new Label(String.format("$%.2f", price));
+        priceLabel.setFont(Font.font("Nunito", 16));
+        priceLabel.setTextFill(Color.hsb(48, 1, 0.92, 1)); // gold
+
+        info.getChildren().addAll(name, priceLabel);
+
+        card.getChildren().addAll(img, info, priceLabel);
+        return card;
+    }
 
 
     public HBox getScreen() {
