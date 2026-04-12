@@ -37,11 +37,11 @@ public class Navigation_Bar {
         Top.setPadding(new Insets(20, 15, 20, 15));
         titleBox.setPadding(new Insets(12));
         left.setAlignment(Pos.CENTER);
-        titleBox.setBackground(new Background(new BackgroundFill(Color.hsb(0, 0, .28, 1), new CornerRadii(12), null)));
+        titleBox.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null)));
         titleBox.setCursor(Cursor.HAND);
         Label title = new Label("Bawabet Al-Quds");
         title.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 35));
-        title.setTextFill(Color.hsb(48, 1, .85, 1));
+        title.setTextFill(Color.hsb(48, 1, 0.92, 1));
         titleBox.setOnMouseClicked(e -> {
             sys.changePage(Page.HOME);
             right = RightBlock(sys.isAuthenticated());
@@ -98,10 +98,12 @@ public class Navigation_Bar {
         Auth.setPadding(new Insets(10, 20, 10, 20));
         Auth.setBackground(Background.EMPTY);
         Auth.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 23));
-        Auth.setTextFill(Color.hsb(0, 0, 0.75, 1));
-        Auth.setTextFill(Color.hsb(215, 0.6, 0.14, 1));
-        Auth.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.85, 1), new CornerRadii(13), null)));
+        Auth.setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+        Auth.setTextFill(Color.hsb(30, 0.50, 0.25, 1));
+        Auth.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(13), null)));
         Auth.setCursor(Cursor.HAND);
+        Auth.setOnMouseEntered(e -> Auth.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.75, 1), new CornerRadii(13), null))));
+        Auth.setOnMouseExited(e -> Auth.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(13), null))));
 
         Auth.setOnAction(new GoToAuth(Page.Login, sys));
         retBox.getChildren().add(Auth);
@@ -118,7 +120,7 @@ public class Navigation_Bar {
 
         TextField search_tf = new TextField();
         search_tf.setPromptText("Search");
-        search_tf.setFont(Font.font("Roboto Rounded-MT", 23));
+        search_tf.setFont(Font.font("Nunito", 23));
         search_tf.setBackground(null);
         search_tf.setStyle("-fx-text-fill: white;");
 
@@ -128,12 +130,14 @@ public class Navigation_Bar {
         iv.setFitHeight(25);
         iv.setFitWidth(25);
         Button search_exec = new Button(null, iv);
-        search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, .85, 1), new CornerRadii(12), null)));
+        search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(0, 12, 12, 0, false), null)));
         search_exec.setPadding(new Insets(10));
         search_exec.setCursor(Cursor.HAND);
+        search_exec.setOnMouseEntered(e -> search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.75, 1), new CornerRadii(0, 12, 12, 0, false), null))));
+        search_exec.setOnMouseExited(e -> search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(0, 12, 12, 0, false), null))));
 
         retBox.getChildren().addAll(search_tf, search_exec);
-        retBox.setBackground(new Background(new BackgroundFill(Color.hsb(0, 0, 0.28, 1), new CornerRadii(12), null)));
+        retBox.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null)));
         HBox.setHgrow(search_tf, Priority.ALWAYS);
         search_exec.setMaxHeight(Double.MAX_VALUE);
         retBox.setMaxHeight(45);
@@ -163,7 +167,7 @@ public class Navigation_Bar {
         retBox.setAlignment(Pos.CENTER);
         retBox.setPadding(new Insets(0));
         retBox.setMaxHeight(52);
-        retBox.setBackground(new Background(new BackgroundFill(Color.hsb(0, 0, 0.28, 1), new CornerRadii(17), null)));
+        retBox.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(17), null)));
 
         Login = new Button("Login");
         SignUp = new Button("Sign up");
@@ -178,7 +182,7 @@ public class Navigation_Bar {
         HBox.setHgrow(Login, Priority.ALWAYS);
         Login.setMaxHeight(Double.MAX_VALUE);
         SignUp.setMaxHeight(Double.MAX_VALUE);
-        Login.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.85, 1), new CornerRadii(12), null)));
+        Login.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(12), null)));
 
         Login.setCursor(Cursor.HAND);
         SignUp.setCursor(Cursor.HAND);
@@ -191,6 +195,9 @@ public class Navigation_Bar {
     }
 
 
+    public HBox getLeft() {
+        return left;
+    }
 
     // Actions
     class GoToAuth implements EventHandler<ActionEvent> {
@@ -213,10 +220,6 @@ public class Navigation_Bar {
                     return;
                 }
             }
-            Label text = new Label("Cart");
-            text.setTextFill(Color.hsb(48, 1, .85, 1));
-            text.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 30));
-            left.getChildren().add(text);
             Top.setCenter(null);
             sys.changePage(Page.CART);
         }

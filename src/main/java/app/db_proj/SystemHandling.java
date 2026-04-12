@@ -1,10 +1,13 @@
 package app.db_proj;
 
+import javafx.scene.control.Label;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 
 import java.util.HashMap;
 
@@ -37,7 +40,7 @@ public class SystemHandling {
 
         // work on root
         root.setTop(Top.getTop());
-        root.setBackground(new Background(new BackgroundFill(Color.hsb(215, 0.6, 0.14, 1), null, null)));
+        root.setBackground(new Background(new BackgroundFill(Color.web("#F0E8CC"), null, null)));
 
     }
 
@@ -46,7 +49,16 @@ public class SystemHandling {
             case Login -> root.setCenter(auth_page.changePage(true).getUI());
             case SignUp -> root.setCenter(auth_page.changePage(false).getUI());
             case HOME -> root.setCenter(home_page.getSP());
-            case CART -> root.setCenter(cart_page.getScreen());
+            case CART -> {
+                root.setCenter(cart_page.getScreen());
+                if (!curPage.equals(Page.CART)) {
+                    Label text = new Label("Cart");
+                    text.setTextFill(Color.hsb(48, 1, 0.92, 1));
+                    text.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 30));
+                    Top.getLeft().getChildren().add(text);
+                    Top.getTop().setCenter(null);
+                }
+            }
             case PROFILE -> openProf();
         }
 

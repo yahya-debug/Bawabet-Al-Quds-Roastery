@@ -26,8 +26,8 @@ public class Labels {
         Label label2 = new Label(data);
         label1.setTextFill(Color.hsb(0, 0, 0.75, 1));
         label2.setTextFill(Color.hsb(0, 0, 0.75, 1));
-        label1.setFont(Font.font("Roboto Rounded-MT", FontWeight.BOLD, 20));
-        label2.setFont(Font.font("Roboto Rounded-MT", 20));
+        label1.setFont(Font.font("Nunito", FontWeight.BOLD, 20));
+        label2.setFont(Font.font("Nunito", 20));
 
         retBox.getChildren().addAll(label1, spacer, label2);
         retBox.setMaxWidth(Double.MAX_VALUE);

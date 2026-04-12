@@ -8,7 +8,8 @@ public enum Page {
     CART("Cart"),
     PROFILE("Profile"),
     ADMIN("Admin Panel"),
-    ITEM_PAGE("Product Details");
+    ITEM_PAGE("Product Details"),
+    ORDERS("Orders");
 
     private final String displayName;
 

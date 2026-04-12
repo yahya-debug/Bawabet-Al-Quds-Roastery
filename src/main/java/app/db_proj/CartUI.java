@@ -54,27 +54,60 @@ public class CartUI {
 
         TextField search_tf = new TextField();
         search_tf.setPromptText("Search in Cart");
-        search_tf.setFont(Font.font("Roboto Rounded-MT", 20));
+        search_tf.setFont(Font.font("Nunito", 20));
         search_tf.setBackground(null);
         search_tf.setStyle("-fx-text-fill: white;");
 
 
 
         ImageView iv = new ImageView(new Image("file:/home/yahya/IdeaProjects/DB_Proj/target/classes/app/db_proj/search.png"));
-        Button search_exec = new Buttons(null, new BackgroundFill(Color.hsb(48, 1, .85, 1), new CornerRadii(8), null), iv, 23).getBtn();
+        Button search_exec = new Buttons(null, new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(8), null), iv, 23).getBtn();
 
         searchBox.getChildren().addAll(search_tf, search_exec);
-        searchBox.setBackground(new Background(new BackgroundFill(Color.hsb(0, 0, 0.28, 1), new CornerRadii(8), null)));
+        searchBox.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(8), null)));
         HBox.setHgrow(search_tf, Priority.ALWAYS);
         search_exec.setMaxHeight(Double.MAX_VALUE);
         searchBox.setMaxHeight(45);
 
+        Button filterBtn = new Buttons("Filter", new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(8), null)).getBtn();
+        filterBtn.setFont(Font.font("Nunito", FontWeight.BOLD, 15));
+        filterBtn.setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+        filterBtn.setMaxHeight(45);
+        filterBtn.setPrefWidth(90);
+        filterBtn.setOnMouseEntered(e -> filterBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(8), null))));
+        filterBtn.setOnMouseExited(e -> filterBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(8), null))));
+
+        ComboBox<String> sortBox = new ComboBox<>();
+        sortBox.getItems().addAll("Default", "Price: Low to High", "Price: High to Low", "Name: A-Z", "Name: Z-A");
+        sortBox.setValue("Sort");
+        sortBox.setStyle(
+            "-fx-background-color: hsb(35, 8%, 46%); " +
+            "-fx-font-family: 'Nunito'; -fx-font-size: 15px; " +
+            "-fx-background-radius: 8; -fx-border-radius: 8;"
+        );
+        sortBox.buttonCellProperty().set(new javafx.scene.control.ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? "Sort" : item);
+                setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+                setFont(Font.font("Nunito", 15));
+                setBackground(Background.EMPTY);
+            }
+        });
+        sortBox.setPrefHeight(45);
+        sortBox.setPrefWidth(160);
+
+        HBox topBar = new HBox(8);
+        HBox.setHgrow(searchBox, Priority.ALWAYS);
+        topBar.setAlignment(Pos.CENTER);
+        topBar.getChildren().addAll(searchBox, filterBtn, sortBox);
 
         SP.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         SP.setFitToWidth(true);
         cart_scroll.setStyle("-fx-background-color: transparent;");
 
-        cart_side.getChildren().addAll(searchBox, SP);
+        cart_side.getChildren().addAll(topBar, SP);
     }
 
     private void make_payment_side() {
@@ -85,36 +118,36 @@ public class CartUI {
 
         payment_box = new BorderPane();
         payment_box.setPadding(new Insets(7));
-        payment_box.setBackground(new Background(new BackgroundFill(Color.hsb(0, 0, .28, 1), new CornerRadii(12), null)));
+        payment_box.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null)));
         payment_box.setMaxHeight(Double.MAX_VALUE);
 
-        Label title_in_box = new Labels("Purchase", Font.font("Adwaita Mono", FontWeight.BOLD, 30), Color.hsb(48, 1, .85, 1)).getLabel();
+        Label title_in_box = new Labels("Purchase", Font.font("Adwaita Mono", FontWeight.BOLD, 30), Color.hsb(48, 1, 0.92, 1)).getLabel();
         title_in_box.setPadding(new Insets(5));
         payment_box.setTop(title_in_box);
 
         VBox form_in_box = new VBox(7);
         form_in_box.setPadding(new Insets(7, 0, 7, 0));
-        Label type_of_payment = new Labels("Type of payment", Font.font("Adwaita Mono", 19), Color.hsb(0, 0, 0.75, 1)).getLabel();
+        Label type_of_payment = new Labels("Type of payment", Font.font("Adwaita Mono", 19), Color.hsb(30, 0.12, 0.78, 1)).getLabel();
         HBox radios = new HBox(10);
         // Create the toggle container
         HBox toggle = new HBox(0);
         toggle.setBackground(new Background(new BackgroundFill(
-                Color.hsb(215, 0.6, 0.14, 1), new CornerRadii(10), null)));
+                Color.hsb(0, 0, 0.25, 1), new CornerRadii(10), null)));
         toggle.setMaxWidth(Region.USE_PREF_SIZE);
 
         Button inStoreBtn = new Button("In-Store");
         Button onlineBtn  = new Button("Online");
         // Shared styling
         for (Button b : new Button[]{inStoreBtn, onlineBtn}) {
-            b.setFont(Font.font("Roboto Rounded-MT", 15));
+            b.setFont(Font.font("Nunito", 15));
             b.setPadding(new Insets(5, 14, 5, 14));
             b.setCursor(Cursor.HAND);
             b.setBackground(Background.EMPTY);
-            b.setTextFill(Color.hsb(0, 0, 0.75, 1));
+            b.setTextFill(Color.hsb(30, 0.12, 0.78, 1));
         }
         // Default selected = In-Store
         inStoreBtn.setBackground(new Background(new BackgroundFill(
-                Color.hsb(48, 1, 0.85, 1), new CornerRadii(10), null)));
+                Color.hsb(48, 1, 0.92, 1), new CornerRadii(10), null)));
         inStoreBtn.setTextFill(Color.BLACK);
         // Payment form (hidden by default)
         VBox paymentForm = makePaymentForm();
@@ -123,10 +156,10 @@ public class CartUI {
 
         onlineBtn.setOnAction(e -> {
             onlineBtn.setBackground(new Background(new BackgroundFill(
-                    Color.hsb(48, 1, 0.85, 1), new CornerRadii(10), null)));
+                    Color.hsb(48, 1, 0.92, 1), new CornerRadii(10), null)));
             onlineBtn.setTextFill(Color.BLACK);
             inStoreBtn.setBackground(Background.EMPTY);
-            inStoreBtn.setTextFill(Color.hsb(0, 0, 0.75, 1));
+            inStoreBtn.setTextFill(Color.hsb(30, 0.12, 0.78, 1));
 
             paymentForm.setVisible(true);
             paymentForm.setManaged(true);
@@ -134,10 +167,10 @@ public class CartUI {
 
         inStoreBtn.setOnAction(e -> {
             inStoreBtn.setBackground(new Background(new BackgroundFill(
-                    Color.hsb(48, 1, 0.85, 1), new CornerRadii(10), null)));
+                    Color.hsb(48, 1, 0.92, 1), new CornerRadii(10), null)));
             inStoreBtn.setTextFill(Color.BLACK);
             onlineBtn.setBackground(Background.EMPTY);
-            onlineBtn.setTextFill(Color.hsb(0, 0, 0.75, 1));
+            onlineBtn.setTextFill(Color.hsb(30, 0.12, 0.78, 1));
 
             paymentForm.setVisible(false);
             paymentForm.setManaged(false);
@@ -150,19 +183,19 @@ public class CartUI {
         HBox.setHgrow(spacer, Priority.ALWAYS);
         radios.getChildren().addAll(type_of_payment, spacer, toggle);
         form_in_box.getChildren().addAll(radios, paymentForm);
-        form_in_box.setBorder(new Border(new BorderStroke(Color.hsb(48, 1, .85, 1), BorderStrokeStyle.SOLID, null, new BorderWidths(0, 0, 2, 0))));
+        form_in_box.setBorder(new Border(new BorderStroke(Color.hsb(48, 1, 0.92, 1), BorderStrokeStyle.SOLID, null, new BorderWidths(0, 0, 2, 0))));
         payment_box.setCenter(form_in_box);
 
         VBox bottom = new VBox(7);
         HBox total = new HBox();
         VBox.setMargin(total, new Insets(7, 0, 0,0));
-        Label total_text = new Labels("Total: ", Font.font("Adwaita Mono", FontWeight.BOLD, 23), Color.hsb(48, 1, .85, 1)).getLabel();
-        Label total_price = new Labels("$100", Font.font("Adwaita Mono", 23), Color.hsb(48, 1, .85, 1)).getLabel();;
+        Label total_text = new Labels("Total: ", Font.font("Adwaita Mono", FontWeight.BOLD, 23), Color.hsb(48, 1, 0.92, 1)).getLabel();
+        Label total_price = new Labels("$100", Font.font("Adwaita Mono", 23), Color.hsb(48, 1, 0.92, 1)).getLabel();;
         spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         total.getChildren().addAll(total_text, spacer, total_price);
 
-        Button order_btn = new Buttons("Purchase", new BackgroundFill(Color.hsb(48, 1, .85, 1), new CornerRadii(12), null)).getBtn();
+        Button order_btn = new Buttons("Purchase", new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(12), null)).getBtn();
         order_btn.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 18));
         order_btn.setMaxWidth(Double.MAX_VALUE);
 
@@ -187,17 +220,18 @@ public class CartUI {
         row.getChildren().addAll(expiry, cvv);
 
         TextField cardHolder = formField("Cardholder Name");
+        TextField address = formField("Delivery Address");
 
-        form.getChildren().addAll(cardNumber, row, cardHolder);
+        form.getChildren().addAll(cardNumber, row, cardHolder, address);
         return form;
     }
 
     private TextField formField(String prompt) {
         TextField tf = new TextField();
         tf.setPromptText(prompt);
-        tf.setFont(Font.font("Roboto Rounded-MT", 15));
+        tf.setFont(Font.font("Nunito", 15));
         tf.setBackground(new Background(new BackgroundFill(
-                Color.hsb(215, 0.6, 0.14, 1), new CornerRadii(7), null)));
+                Color.hsb(0, 0, 0.25, 1), new CornerRadii(7), null)));
         tf.setStyle("-fx-text-fill: white;");
         tf.setMaxWidth(Double.MAX_VALUE);
         return tf;
@@ -208,7 +242,7 @@ public class CartUI {
         card.setPrefWidth(Double.MAX_VALUE);
         card.setPadding(new Insets(12));
         card.setAlignment(Pos.CENTER_LEFT);
-        card.setBackground(new Background(new BackgroundFill(Color.hsb(0, 0, 0.28, 1), new CornerRadii(12), null)));
+        card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null)));
 
         // Item image
         ImageView img = new ImageView(itemImage);
@@ -225,8 +259,8 @@ public class CartUI {
         name.setTextFill(Color.WHITE);
 
         Label priceLabel = new Label(String.format("$%.2f", price));
-        priceLabel.setFont(Font.font("Roboto Rounded-MT", 16));
-        priceLabel.setTextFill(Color.hsb(48, 1, 0.85, 1)); // gold
+        priceLabel.setFont(Font.font("Nunito", 16));
+        priceLabel.setTextFill(Color.hsb(48, 1, 0.92, 1)); // gold
 
         info.getChildren().addAll(name, priceLabel);
 
