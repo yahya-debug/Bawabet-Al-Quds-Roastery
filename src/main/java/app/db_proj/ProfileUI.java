@@ -30,11 +30,9 @@ public class ProfileUI {
         main_block.setPadding(new Insets(12));
         main_block.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(15), null)));
         main_block.prefWidthProperty().bind(SP.widthProperty().multiply(.3));
-        main_block.prefHeightProperty().bind(SP.heightProperty().multiply(.5));
         main_block.maxWidthProperty().bind(SP.widthProperty().multiply(.3));
-        main_block.maxHeightProperty().bind(SP.heightProperty().multiply(.5));
-        main_block.setMinHeight(400);
         main_block.setMinWidth(355);
+        main_block.setMaxHeight(Region.USE_PREF_SIZE);
 
         // not exiting profile when clicking the main_box
         main_block.setOnMouseClicked(e -> e.consume());
@@ -53,12 +51,21 @@ public class ProfileUI {
 
         HBox editProfBtn = profileBtn("Edit Profile");
         editProfBtn.setOnMouseClicked(e -> editProf());
+        editProfBtn.setOnMouseEntered(e -> editProfBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(12), null))));
+        editProfBtn.setOnMouseExited(e -> editProfBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null))));
+
 
         HBox ordersBtn = profileBtn("My Orders");
         ordersBtn.setOnMouseClicked(e -> sys.changePage(Page.ORDERS));
+        ordersBtn.setOnMouseEntered(e -> ordersBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(12), null))));
+        ordersBtn.setOnMouseExited(e -> ordersBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null))));
+
 
         HBox cartBtn = profileBtn("Cart");
         cartBtn.setOnMouseClicked(e -> { sys.hideProf(); sys.changePage(Page.CART); });
+        cartBtn.setOnMouseEntered(e -> cartBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(12), null))));
+        cartBtn.setOnMouseExited(e -> cartBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null))));
+
 
         Button LogoutBtn = new Buttons("Log out", null).getBtn();
         LogoutBtn.setBorder(new Border(new BorderStroke(Color.hsb(5, 1, .4), BorderStrokeStyle.SOLID, new CornerRadii(10), new BorderWidths(2))));

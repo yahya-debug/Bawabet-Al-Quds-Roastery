@@ -42,6 +42,7 @@ public class SystemHandling {
         root.setTop(Top.getTop());
         root.setBackground(new Background(new BackgroundFill(Color.web("#F0E8CC"), null, null)));
 
+        changePage(curPage);
     }
 
     public void changePage(Page page) {

@@ -32,7 +32,7 @@ public class CartUI {
 
         cart_scroll = new VBox(10);
         Image img = new Image(getClass().getResourceAsStream("/app/db_proj/Logo.jpg"));
-        cart_scroll.getChildren().add(makeItemCard("Cart Item", 12.00, img));
+        cart_scroll.getChildren().add(Item_UI.makeItemCard("Cart Item", 12.00, img));
 
         SP = new ScrollPane(cart_scroll);
 
@@ -250,7 +250,7 @@ public class CartUI {
 
         VBox orders_vb = new VBox(7);
         ScrollPane scroll_orders = new ScrollPane(orders_vb);
-        orders_vb.getChildren().addAll(makeOrderCard("Item", 15,  new Image(getClass().getResourceAsStream("/app/db_proj/Logo.jpg"))));
+        orders_vb.getChildren().addAll(Item_UI.makeOrderCard("Item", 15,  new Image(getClass().getResourceAsStream("/app/db_proj/Logo.jpg"))));
         scroll_orders.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         scroll_orders.setFitToWidth(true);
 
@@ -288,86 +288,6 @@ public class CartUI {
         tf.setStyle("-fx-text-fill: white;");
         tf.setMaxWidth(Double.MAX_VALUE);
         return tf;
-    }
-
-    private HBox makeItemCard(String itemName, double price, Image itemImage) {
-        HBox card = new HBox(15);
-        card.setPrefWidth(Double.MAX_VALUE);
-        card.setPadding(new Insets(12));
-        card.setAlignment(Pos.CENTER_LEFT);
-        card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null)));
-
-        // Item image
-        ImageView img = new ImageView(itemImage);
-        img.setFitWidth(70);
-        img.setFitHeight(70);
-        img.setPreserveRatio(true);
-
-        // Name + price
-        VBox info = new VBox(6);
-        HBox.setHgrow(info, Priority.ALWAYS);
-
-        Label name = new Label(itemName);
-        name.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 17));
-        name.setTextFill(Color.WHITE);
-
-        Label priceLabel = new Label(String.format("$%.2f", price));
-        priceLabel.setFont(Font.font("Nunito", 16));
-        priceLabel.setTextFill(Color.hsb(48, 1, 0.92, 1)); // gold
-
-        info.getChildren().addAll(name, priceLabel);
-
-        // Remove button
-        ImageView trashIcon = new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/icons8-trash-96.png")));
-
-
-        Button removeBtn = new Buttons(null, null, trashIcon, 28).getBtn();
-        removeBtn.setPadding(new Insets(8));
-        removeBtn.setOnAction(e -> {
-            VBox parent = (VBox) card.getParent();
-            parent.getChildren().remove(card);
-        });
-
-        card.setCursor(Cursor.HAND);
-        card.setOnMouseEntered(e -> card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(12), null))));
-        card.setOnMouseExited(e -> card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null))));
-
-        card.getChildren().addAll(img, info, removeBtn);
-        return card;
-    }
-
-    private HBox makeOrderCard(String itemName, double price, Image itemImage) {
-        HBox card = new HBox(15);
-        card.setPrefWidth(Double.MAX_VALUE);
-        card.setAlignment(Pos.CENTER_LEFT);
-        card.setPadding(new Insets(5));
-        card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null)));
-        card.setCursor(Cursor.HAND);
-        card.setOnMouseEntered(e -> card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(12), null))));
-        card.setOnMouseExited(e -> card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null))));
-
-        // Item image
-        ImageView img = new ImageView(itemImage);
-        img.setFitWidth(70);
-        img.setFitHeight(70);
-        img.setPreserveRatio(true);
-
-        // Name + price
-        VBox info = new VBox(6);
-        HBox.setHgrow(info, Priority.ALWAYS);
-
-        Label name = new Label(itemName);
-        name.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 17));
-        name.setTextFill(Color.WHITE);
-
-        Label priceLabel = new Label(String.format("$%.2f", price));
-        priceLabel.setFont(Font.font("Nunito", 16));
-        priceLabel.setTextFill(Color.hsb(48, 1, 0.92, 1)); // gold
-
-        info.getChildren().addAll(name, priceLabel);
-
-        card.getChildren().addAll(img, info, priceLabel);
-        return card;
     }
 
 
