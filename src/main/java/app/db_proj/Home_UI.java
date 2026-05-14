@@ -25,12 +25,18 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 public class Home_UI {
     private ScrollPane SP;
     private FlowPane grid;
     private SystemHandling sys;
     private HBox packageBox;
     private VBox home;
+    private Image placeholder;
 
     public Home_UI(SystemHandling sys) {
         this.sys = sys;
@@ -41,7 +47,7 @@ public class Home_UI {
         grid.setHgap(15);
         grid.setVgap(15);
         grid.setPadding(new Insets(15));
-        
+
         home.getChildren().add(grid);
         home.setPadding(new Insets(10));
         SP = new ScrollPane(home);
@@ -50,60 +56,59 @@ public class Home_UI {
         SP.setFitToHeight(false);
         SP.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         SP.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        
 
-
-        showPackage();
-//        for (Item item : items) {
-//            grid.getChildren().add(makeCard(item));
-//        }
-
+        // Pre-load all items from the database on startup
+        loadItems("", "All");
     }
 
+    // ── Database retrieval (Functionality 2) ──────────────────────────────────
 
-    private void showPackage() {
-        packageBox.setSpacing(10);
-        packageBox.setPadding(new Insets(20));
-        packageBox.setAlignment(Pos.CENTER_LEFT);
+    public void loadItems(String keyword, String category) {
+        grid.getChildren().clear();
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
+        if (placeholder == null) {
+            placeholder = new Image(getClass().getResourceAsStream("/app/db_proj/Logo.jpg"));
+        }
 
-        Image logo = new Image(getClass().getResourceAsStream("/app/db_proj/Logo.jpg"));
+        try {
+            Connection conn = DBConnection.getConnection();
 
-        ImageView iv = new ImageView(logo);
-        iv.setFitWidth(170);
-        iv.setFitHeight(170);
+            StringBuilder sql = new StringBuilder(
+                "SELECT item_id, name, price, item_type FROM Item WHERE 1=1");
+            if (!keyword.isEmpty())         sql.append(" AND name LIKE ?");
+            if (!category.equals("All"))    sql.append(" AND item_type = ?");
+            sql.append(" ORDER BY item_type, name");
 
-        VBox info = new VBox(7);
-        Label l = new Labels("Items: ", Font.font("Nunito", FontWeight.BOLD, 17), Color.BLACK).getLabel();
-        Label c = new Labels("Coffee, tea, nuts", Font.font("Nunito", 17), Color.BLACK).getLabel();
-        HBox row = new HBox(5);
-        row.getChildren().addAll(l, c);
-        info.getChildren().addAll(row);
+            PreparedStatement ps = conn.prepareStatement(sql.toString());
+            int idx = 1;
+            if (!keyword.isEmpty())       { ps.setString(idx, "%" + keyword + "%"); idx++; }
+            if (!category.equals("All"))    ps.setString(idx, category.toLowerCase());
 
-        Button goTo = new Buttons(null, null, new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/icons8-right-96.png"))), 96).getBtn();
-        packageBox.getChildren().addAll(iv, info, spacer, goTo);
+            ResultSet rs = ps.executeQuery();
+            boolean any = false;
+            while (rs.next()) {
+                any = true;
+                String name  = rs.getString("name");
+                double price = rs.getDouble("price");
+                String type  = rs.getString("item_type");
+                grid.getChildren().add(Item_UI.makeProductCard(name, price, type, placeholder));
+            }
 
-        Region bgRegion = new Region();
-        bgRegion.setBackground(new Background(new BackgroundImage(
-            logo,
-            BackgroundRepeat.NO_REPEAT,
-            BackgroundRepeat.NO_REPEAT,
-            BackgroundPosition.CENTER,
-            new BackgroundSize(1, 1, true, true, false, true)
-        )));
-        bgRegion.setOpacity(0.15);
-        bgRegion.setManaged(false);
+            if (!any) {
+                Label noResults = new Labels(
+                    "No products found.", Font.font("Nunito", 20),
+                    Color.hsb(30, 0.12, 0.78, 1)).getLabel();
+                grid.getChildren().add(noResults);
+            }
 
-        StackPane wrapper = new StackPane();
-        wrapper.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(15), null)));
-        wrapper.setCursor(Cursor.HAND);
-        bgRegion.prefWidthProperty().bind(wrapper.widthProperty());
-        bgRegion.prefHeightProperty().bind(wrapper.heightProperty());
-
-        wrapper.getChildren().addAll(bgRegion, packageBox);
-        home.getChildren().add(0, wrapper);
+        } catch (SQLException e) {
+            Label err = new Labels(
+                "Could not connect to database. Run schema.sql and test_data.sql first.",
+                Font.font("Nunito", 15), Color.web("#e57373")).getLabel();
+            err.setWrapText(true);
+            grid.getChildren().add(err);
+            e.printStackTrace();
+        }
     }
 
     public ScrollPane getSP() {

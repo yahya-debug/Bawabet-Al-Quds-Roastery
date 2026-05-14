@@ -14,6 +14,10 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -139,6 +143,17 @@ public class Auth_UI {
 
         Button btn = FormBtn("Sign Up");
 
+        // Feedback label shown below the button (hidden until an action fires)
+        Label statusLabel = new Label();
+        statusLabel.setFont(Font.font("Nunito", 14));
+        statusLabel.setWrapText(true);
+        statusLabel.setMaxWidth(370);
+        statusLabel.setVisible(false);
+        statusLabel.setManaged(false);
+
+        // Track which mode is active so the button action knows what to insert
+        boolean[] isPersonal = {true};
+
         // switch account from the registration box
         HBox little_switch = new HBox(4);
         Label l1 = new Label("Already have an account?");
@@ -157,9 +172,10 @@ public class Auth_UI {
 
         // Toggle between business mode or personal
         personal_btn.setOnAction(e -> {
+            isPersonal[0] = true;
             UI.getChildren().clear();
             vb = Box("Sign Up", 10, Color.hsb(35, 0.08, 0.46, 1), 15);;
-            vb.getChildren().addAll(type_picker, name, email, phone, password, btn, little_switch);
+            vb.getChildren().addAll(type_picker, name, email, phone, password, btn, statusLabel, little_switch);
             personal_btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(12), null)));
             business_btn.setBackground(Background.EMPTY);
             UI.getChildren().add(vb);
@@ -169,9 +185,10 @@ public class Auth_UI {
         });
 
         business_btn.setOnAction(e -> {
+            isPersonal[0] = false;
             UI.getChildren().clear();
             vb = Box("Sign Up", 10, Color.hsb(35, 0.08, 0.46, 1), 15);;
-            vb.getChildren().addAll(type_picker, name, email, phone, password, location, kind_of_business, tax_id, reg_number, btn, little_switch);
+            vb.getChildren().addAll(type_picker, name, email, phone, password, location, kind_of_business, tax_id, reg_number, btn, statusLabel, little_switch);
             business_btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(12), null)));
             personal_btn.setBackground(Background.EMPTY);
             UI.getChildren().add(vb);
@@ -180,11 +197,88 @@ public class Auth_UI {
             signBox = vb;
         });
 
+        // ── Sign-Up button action (Functionality 1 – INSERT) ──────────────────
+        btn.setOnAction(e -> {
+            if (isPersonal[0]) {
+                registerIndividualCustomer(
+                    name.getText().trim(),
+                    email.getText().trim(),
+                    password.getText().trim(),
+                    statusLabel
+                );
+            } else {
+                statusLabel.setText("Business registration is handled by the admin. Please contact us.");
+                statusLabel.setTextFill(Color.hsb(48, 1, 0.92, 1));
+                statusLabel.setVisible(true);
+                statusLabel.setManaged(true);
+            }
+        });
+
         VBox.setMargin(btn, new Insets(7, 0, 0, 0));
-        vb.getChildren().addAll(type_picker, name, email, phone, password, btn, little_switch);
+        vb.getChildren().addAll(type_picker, name, email, phone, password, btn, statusLabel, little_switch);
         vb.setAlignment(Pos.CENTER);
         signBox = vb;
         return vb;
+    }
+
+    /**
+     * Executes the 3-step INSERT transaction:
+     *   1. Customer row  2. Individual sub-type  3. empty Cart
+     * Updates statusLabel with success or error feedback.
+     */
+    private void registerIndividualCustomer(String name, String email,
+                                            String password, Label statusLabel) {
+        if (name.isEmpty() || email.isEmpty() || password.isEmpty()) {
+            statusLabel.setText("Please fill in Name, Email, and Password.");
+            statusLabel.setTextFill(Color.web("#e57373"));
+            statusLabel.setVisible(true);
+            statusLabel.setManaged(true);
+            return;
+        }
+        try {
+            Connection conn = DBConnection.getConnection();
+
+            // Step 1 – insert base Customer
+            PreparedStatement ps1 = conn.prepareStatement(
+                "INSERT INTO Customer (name, email, password) VALUES (?, ?, ?)",
+                java.sql.Statement.RETURN_GENERATED_KEYS);
+            ps1.setString(1, name);
+            ps1.setString(2, email);
+            ps1.setString(3, password);
+            ps1.executeUpdate();
+
+            ResultSet keys = ps1.getGeneratedKeys();
+            if (keys.next()) {
+                int id = keys.getInt(1);
+
+                // Step 2 – Individual sub-type
+                PreparedStatement ps2 = conn.prepareStatement(
+                    "INSERT INTO Individual (customer_id) VALUES (?)");
+                ps2.setInt(1, id);
+                ps2.executeUpdate();
+
+                // Step 3 – empty Cart
+                PreparedStatement ps3 = conn.prepareStatement(
+                    "INSERT INTO Cart (customer_id) VALUES (?)");
+                ps3.setInt(1, id);
+                ps3.executeUpdate();
+            }
+
+            statusLabel.setText("Account created successfully! You can now log in.");
+            statusLabel.setTextFill(Color.web("#4CAF50"));
+            statusLabel.setVisible(true);
+            statusLabel.setManaged(true);
+
+        } catch (SQLException ex) {
+            String msg = (ex.getErrorCode() == 1062)
+                ? "This email is already registered."
+                : "Registration failed: " + ex.getMessage();
+            statusLabel.setText(msg);
+            statusLabel.setTextFill(Color.web("#e57373"));
+            statusLabel.setVisible(true);
+            statusLabel.setManaged(true);
+            ex.printStackTrace();
+        }
     }
 
     public VBox Box(String title, double gap, Color bc, double rad) {

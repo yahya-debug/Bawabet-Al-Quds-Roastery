@@ -38,6 +38,9 @@ public class SystemHandling {
         home_page = new Home_UI(this);
         cart_page = new CartUI(this);
 
+        // Wire the nav-bar search to query the Item table
+        Top.setSearchAction(keyword -> home_page.loadItems(keyword, "All"));
+
         // work on root
         root.setTop(Top.getTop());
         root.setBackground(new Background(new BackgroundFill(Color.web("#F0E8CC"), null, null)));

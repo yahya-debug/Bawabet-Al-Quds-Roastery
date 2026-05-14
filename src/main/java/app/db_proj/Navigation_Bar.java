@@ -16,11 +16,16 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 
+import java.util.function.Consumer;
+
 public class Navigation_Bar {
     private BorderPane Top;
     private HBox left, titleBox, nav, right;
     private SystemHandling sys;
     private Button Login, SignUp;
+    private TextField search_tf;
+    private Button search_exec_stored;
+    private Consumer<String> searchAction;
 
     public Navigation_Bar(SystemHandling sys) {
         this.sys = sys;
@@ -118,23 +123,27 @@ public class Navigation_Bar {
         retBox.setPadding(new Insets(0));
         retBox.setMaxHeight(52);
 
-        TextField search_tf = new TextField();
+        search_tf = new TextField();
         search_tf.setPromptText("Search");
         search_tf.setFont(Font.font("Nunito", 23));
         search_tf.setBackground(null);
         search_tf.setStyle("-fx-text-fill: white;");
 
-
-
         ImageView iv = new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/search.png")));
         iv.setFitHeight(25);
         iv.setFitWidth(25);
         Button search_exec = new Button(null, iv);
+        search_exec_stored = search_exec;
         search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(0, 12, 12, 0, false), null)));
         search_exec.setPadding(new Insets(10));
         search_exec.setCursor(Cursor.HAND);
         search_exec.setOnMouseEntered(e -> search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.75, 1), new CornerRadii(0, 12, 12, 0, false), null))));
         search_exec.setOnMouseExited(e -> search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(0, 12, 12, 0, false), null))));
+
+        if (searchAction != null) {
+            search_exec.setOnAction(e -> searchAction.accept(search_tf.getText().trim()));
+            search_tf.setOnAction(e -> searchAction.accept(search_tf.getText().trim()));
+        }
 
         retBox.getChildren().addAll(search_tf, search_exec);
         retBox.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null)));
@@ -197,6 +206,14 @@ public class Navigation_Bar {
 
     public HBox getLeft() {
         return left;
+    }
+
+    public void setSearchAction(Consumer<String> action) {
+        this.searchAction = action;
+        if (search_exec_stored != null && search_tf != null) {
+            search_exec_stored.setOnAction(e -> action.accept(search_tf.getText().trim()));
+            search_tf.setOnAction(e -> action.accept(search_tf.getText().trim()));
+        }
     }
 
     // Actions
