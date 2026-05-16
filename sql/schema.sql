@@ -1,14 +1,12 @@
--- ═══════════════════════════════════════════════════════════════════════════
 -- Bawabet Al-Quds Roastery – Database Schema (Demo Prototype)
 -- Student : Yahya Hasan  ID: 1242481
 -- Course  : COMP333 – Database Systems  |  Instructor: Yousef Hassouneh
---
+
 -- ER subset implemented:
 --   Entity set 1 : Customer  (+ Individual / Business ISA subtypes)
 --   Entity set 2 : Item      (superclass with item_type discriminator)
 --   Relationship : Cart (Customer owns one Cart) +
 --                  CartItem (M:N  Cart ↔ Item, resolves the "contains" rel.)
--- ═══════════════════════════════════════════════════════════════════════════
 
 CREATE DATABASE IF NOT EXISTS bawabet_db
     CHARACTER SET utf8mb4
@@ -16,10 +14,8 @@ CREATE DATABASE IF NOT EXISTS bawabet_db
 
 USE bawabet_db;
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- ENTITY SET 1 : Customer
 -- R15. Customer(customer_id, name, email, password)
--- ─────────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS Customer (
     customer_id INT          AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(100) NOT NULL,
@@ -41,11 +37,9 @@ CREATE TABLE IF NOT EXISTS Business (
     FOREIGN KEY (customer_id) REFERENCES Customer(customer_id) ON DELETE CASCADE
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- ENTITY SET 2 : Item
 -- R9. Item(item_id, name, price, wholesale_price, item_type)
 --     item_type ∈ {'coffee', 'roasts', 'spice', 'package'}
--- ─────────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS Item (
     item_id         INT           AUTO_INCREMENT PRIMARY KEY,
     name            VARCHAR(150)  NOT NULL,
@@ -54,10 +48,8 @@ CREATE TABLE IF NOT EXISTS Item (
     item_type       ENUM('coffee','roasts','spice','package') NOT NULL
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- RELATIONSHIP SET : Cart  (Customer has one Cart – total participation)
 -- R19. Cart(cart_id, customer_id)
--- ─────────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS Cart (
     cart_id     INT AUTO_INCREMENT PRIMARY KEY,
     customer_id INT NOT NULL UNIQUE,        -- one cart per customer

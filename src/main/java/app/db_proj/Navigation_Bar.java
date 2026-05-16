@@ -125,20 +125,20 @@ public class Navigation_Bar {
 
         search_tf = new TextField();
         search_tf.setPromptText("Search");
-        search_tf.setFont(Font.font("Nunito", 23));
+        search_tf.setFont(Font.font("Nunito", 19));
         search_tf.setBackground(null);
         search_tf.setStyle("-fx-text-fill: white;");
 
         ImageView iv = new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/search.png")));
-        iv.setFitHeight(25);
-        iv.setFitWidth(25);
+        iv.setFitHeight(20);
+        iv.setFitWidth(20);
         Button search_exec = new Button(null, iv);
         search_exec_stored = search_exec;
-        search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(0, 12, 12, 0, false), null)));
+        search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(12, 12, 12, 12, false), null)));
         search_exec.setPadding(new Insets(10));
         search_exec.setCursor(Cursor.HAND);
-        search_exec.setOnMouseEntered(e -> search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.75, 1), new CornerRadii(0, 12, 12, 0, false), null))));
-        search_exec.setOnMouseExited(e -> search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(0, 12, 12, 0, false), null))));
+        search_exec.setOnMouseEntered(e -> search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.75, 1), new CornerRadii(12, 12, 12, 12, false), null))));
+        search_exec.setOnMouseExited(e -> search_exec.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(12, 12, 12, 12, false), null))));
 
         if (searchAction != null) {
             search_exec.setOnAction(e -> searchAction.accept(search_tf.getText().trim()));

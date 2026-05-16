@@ -9,16 +9,19 @@ public class DBConnection {
     private static final String URL  = "jdbc:mysql://localhost:3306/bawabet_db"
             + "?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
     private static final String USER = "root";
-    // Change PASSWORD to your MySQL root password if you have one set.
-    private static final String PASSWORD = "";
+    private static final String PASSWORD = "j0hnL00r";
 
     private static Connection connection;
 
     private DBConnection() {}
 
-    public static Connection getConnection() throws SQLException {
-        if (connection == null || connection.isClosed()) {
-            connection = DriverManager.getConnection(URL, USER, PASSWORD);
+    public static Connection getConnection() {
+        try {
+            if (connection == null || connection.isClosed()) {
+                connection = DriverManager.getConnection(URL, USER, PASSWORD);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
         return connection;
     }

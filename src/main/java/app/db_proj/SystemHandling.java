@@ -9,6 +9,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 
+import java.sql.Connection;
 import java.util.HashMap;
 
 public class SystemHandling {
@@ -22,13 +23,13 @@ public class SystemHandling {
     private ProfileUI profile_page;
     private Page curPage;
     private StackPane screen;
+    private Connection conn;
 
-    public Page getCurPage() {
-        return curPage;
-    }
+
 
     public SystemHandling() {
-        this.authenticated = true;
+        this.conn = DBConnection.getConnection();
+        this.authenticated = false;
         curPage = Page.HOME;
 
         root = new BorderPane();
@@ -37,9 +38,6 @@ public class SystemHandling {
         auth_page = new Auth_UI(this);
         home_page = new Home_UI(this);
         cart_page = new CartUI(this);
-
-        // Wire the nav-bar search to query the Item table
-        Top.setSearchAction(keyword -> home_page.loadItems(keyword, "All"));
 
         // work on root
         root.setTop(Top.getTop());
@@ -101,6 +99,13 @@ public class SystemHandling {
 
     public StackPane getScreen() {
         return screen;
+    }
+    public Page getCurPage() {
+        return curPage;
+    }
+
+    public Connection getConn() {
+        return conn;
     }
 }
 
