@@ -9,7 +9,7 @@ public class DBConnection {
     private static final String URL  = "jdbc:mysql://localhost:3306/bawabet_db"
             + "?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
     private static final String USER = "root";
-    private static final String PASSWORD = "j0hnL00r";
+    private static final String PASSWORD = "p4ssw0rd";
 
     private static Connection connection;
 

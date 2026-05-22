@@ -211,9 +211,8 @@ public class Auth_UI {
                 Connection conn = sys.getConn();
                 Statement stmt = conn.createStatement();
                 if (isPersonal[0]) {
-                    stmt.addBatch("INSERT INTO Person (person_id, name, email, password) VALUES (" + 1 + ",'" + name.getText() + "','" + email.getText() + "','" + password.getText() + "')");
-//                    stmt.addBatch();
-                } else
+                    stmt.addBatch("INSERT INTO Person (person_id, name, email, password) VALUES (" + 1 + ",'" + name.getText() + "','" + email.getText() + "','" + password.getText() + "');");
+                } else {}
                 stmt.executeBatch();
             } catch (SQLException ex) {
                 throw new RuntimeException(ex);
