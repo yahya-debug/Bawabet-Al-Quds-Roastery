@@ -21,9 +21,17 @@ public class SystemHandling {
     private Home_UI home_page;
     private CartUI cart_page;
     private ProfileUI profile_page;
+    private Admin_UI admin_page;
     private Page curPage;
     private StackPane screen;
     private Connection conn;
+
+    // the person id name and email of the currently signed in user
+    // filled in by Auth_Logic.login after a successful match
+    private Integer currentUserId;
+    private String currentUserName;
+    private String currentUserEmail;
+    private boolean userIsAdmin;
 
 
 
@@ -62,6 +70,11 @@ public class SystemHandling {
                 }
             }
             case PROFILE -> openProf();
+            case ADMIN -> {
+                System.out.println("admin");
+                if (admin_page == null) admin_page = new Admin_UI(this);
+                root.setCenter(admin_page.getScreen());
+            }
         }
 
         // since the profile is a pop-up like screen; we dont need to consider it as a separated page
@@ -106,6 +119,35 @@ public class SystemHandling {
 
     public Connection getConn() {
         return conn;
+    }
+
+    // store the signed in user and check if they are an admin
+    // also asks the navigation bar to rebuild itself for the correct role
+    public void setCurrentUser(Integer id, String name, String email) {
+        System.out.println("H");
+        this.currentUserId = id;
+        this.currentUserName = name;
+        this.currentUserEmail = email;
+        this.authenticated = true;
+        System.out.println(Profile_Logic.isAdmin(conn, id));
+        this.userIsAdmin = Profile_Logic.isAdmin(conn, id);
+        if (Top != null) Top.refreshAuth();
+    }
+
+    public boolean isUserAdmin() {
+        return userIsAdmin;
+    }
+
+    public Integer getCurrentUserId() {
+        return currentUserId;
+    }
+
+    public String getCurrentUserName() {
+        return currentUserName;
+    }
+
+    public String getCurrentUserEmail() {
+        return currentUserEmail;
     }
 }
 

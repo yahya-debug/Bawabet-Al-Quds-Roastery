@@ -48,6 +48,7 @@ public class Navigation_Bar {
         title.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 35));
         title.setTextFill(Color.hsb(48, 1, 0.92, 1));
         titleBox.setOnMouseClicked(e -> {
+            if (sys.isUserAdmin())  sys.changePage(Page.ADMIN);
             sys.changePage(Page.HOME);
             right = RightBlock(sys.isAuthenticated());
             nav = CenterBlock();
@@ -206,6 +207,25 @@ public class Navigation_Bar {
 
     public HBox getLeft() {
         return left;
+    }
+
+    // rebuild the right and center blocks based on the current auth state and role
+    // called by SystemHandling after login or signup
+    // admins get logo only, no search bar, no cart, no profile icons
+    public void refreshAuth() {
+        if (sys.isAuthenticated() && sys.isUserAdmin()) {
+            Top.setCenter(null);
+            Top.setRight(null);
+        } else {
+            right = RightBlock(sys.isAuthenticated());
+            nav = CenterBlock();
+            Top.setCenter(nav);
+            Top.setRight(right);
+            BorderPane.setAlignment(nav, Pos.CENTER);
+            BorderPane.setAlignment(right, Pos.CENTER);
+        }
+        Top.setLeft(left);
+        BorderPane.setAlignment(left, Pos.CENTER);
     }
 
     public void setSearchAction(Consumer<String> action) {

@@ -18,9 +18,16 @@ public class ProfileUI {
     private StackPane SP;
     private VBox main_block;
     private SystemHandling sys;
+    private Profile_Logic.CustomerInfo info;
 
     public ProfileUI(SystemHandling sys) {
         this.sys = sys;
+
+        // pull the current customer info from the database when the profile opens
+        // so the screen shows the real name email and account type
+        if (sys.getCurrentUserId() != null) {
+            info = Profile_Logic.getCustomer(sys.getConn(), sys.getCurrentUserId());
+        }
 
         SP = new StackPane();
         SP.setBackground(new Background(new BackgroundFill(Color.hsb(0, 0, 0, .55), null, null)));
@@ -47,7 +54,15 @@ public class ProfileUI {
         ImageView prof_ph = new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/icons8-profile-96.png")));
         prof_ph.setFitHeight(96);
         prof_ph.setFitWidth(96);
-        Label name = new Labels("Name", Font.font("Nunito", FontWeight.BOLD, 27), Color.WHITE).getLabel();
+
+        // fall back to placeholders when the database has nothing for this user
+        String displayName = info != null && info.name != null ? info.name : "Name";
+        String displayEmail = info != null && info.email != null ? info.email : "";
+        String displayType = info != null && info.type != null ? info.type : "";
+
+        Label name = new Labels(displayName, Font.font("Nunito", FontWeight.BOLD, 27), Color.WHITE).getLabel();
+        Label emailLabel = new Labels(displayEmail, Font.font("Nunito", 16), Color.hsb(30, 0.12, 0.78, 1)).getLabel();
+        Label typeLabel = new Labels(displayType, Font.font("Nunito", 14), Color.hsb(48, 1, 0.92, 1)).getLabel();
 
         HBox editProfBtn = profileBtn("Edit Profile");
         editProfBtn.setOnMouseClicked(e -> editProf());
@@ -65,6 +80,19 @@ public class ProfileUI {
         cartBtn.setOnMouseClicked(e -> { sys.hideProf(); sys.changePage(Page.CART); });
         cartBtn.setOnMouseEntered(e -> cartBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(12), null))));
         cartBtn.setOnMouseExited(e -> cartBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null))));
+
+        // only build the Admin Panel entry when the logged in person is in the Admin table
+        // we keep the variable nullable so the head can decide whether to add it
+        HBox adminBtn = null;
+        boolean userIsAdmin = sys.getCurrentUserId() != null
+                && Profile_Logic.isAdmin(sys.getConn(), sys.getCurrentUserId());
+        if (userIsAdmin) {
+            adminBtn = profileBtn("Admin Panel");
+            HBox finalAdminBtn = adminBtn;
+            adminBtn.setOnMouseClicked(e -> { sys.hideProf(); sys.changePage(Page.ADMIN); });
+            adminBtn.setOnMouseEntered(e -> finalAdminBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(12), null))));
+            adminBtn.setOnMouseExited(e -> finalAdminBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null))));
+        }
 
 
         Button LogoutBtn = new Buttons("Log out", null).getBtn();
@@ -84,7 +112,9 @@ public class ProfileUI {
 
 
         head.setAlignment(Pos.TOP_CENTER);
-        head.getChildren().addAll(prof_ph, name, editProfBtn, ordersBtn, cartBtn, LogoutBtn);
+        head.getChildren().addAll(prof_ph, name, emailLabel, typeLabel, editProfBtn, ordersBtn, cartBtn);
+        if (adminBtn != null) head.getChildren().add(adminBtn);
+        head.getChildren().add(LogoutBtn);
 
 
         main_block.getChildren().addAll(head);
@@ -104,7 +134,9 @@ public class ProfileUI {
         head.getChildren().addAll(go_back_btn, title);
         head.setAlignment(Pos.CENTER_LEFT);
 
-        HBox email = field("Email", "example@email.com");
+        // prefill the email from the customer record fetched on profile open
+        String prefillEmail = info != null && info.email != null ? info.email : "";
+        HBox email = field("Email", prefillEmail);
         HBox phone = field("Phone Number", null);
         HBox address = field("Address", null);
         HBox password1 = field("Current Password", null);

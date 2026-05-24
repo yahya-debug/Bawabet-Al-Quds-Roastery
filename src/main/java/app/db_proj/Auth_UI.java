@@ -5,19 +5,12 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -62,6 +55,20 @@ public class Auth_UI {
 
         Button btn = FormBtn("Login");
 
+        // warning shown when any field is left empty
+        Label warn_empty = new Label("Fill in all fields");
+        warn_empty.setFont(Font.font("Nunito", 16));
+        warn_empty.setTextFill(Color.RED);
+        warn_empty.setVisible(false);
+        warn_empty.managedProperty().bind(warn_empty.visibleProperty());
+
+        // warning shown when credentials do not match any account
+        Label warn_wrong = new Label("Wrong name, email or password");
+        warn_wrong.setFont(Font.font("Nunito", 16));
+        warn_wrong.setTextFill(Color.RED);
+        warn_wrong.setVisible(false);
+        warn_wrong.managedProperty().bind(warn_wrong.visibleProperty());
+
         VBox.setMargin(btn, new Insets(7, 0, 0, 0));
 
         vb.setAlignment(Pos.CENTER);
@@ -81,18 +88,23 @@ public class Auth_UI {
 
         l2.setOnMouseClicked(e -> changePage(false));
 
-        vb.getChildren().addAll(name, email, password, btn, little_switch);
+        vb.getChildren().addAll(warn_empty, warn_wrong, name, email, password, btn, little_switch);
 
         loginBox = vb;
 
         btn.setOnAction(e -> {
-            Connection conn = sys.getConn();
-            try {
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("SELECT * FROM Person WHERE email = '" + email.getText() + "' AND name = '" + name.getText() + "' AND password = '" +  password.getText() + "';");
-                System.out.println(rs);
-            } catch (SQLException ex) {
-                throw new RuntimeException(ex);
+            // hide any previous warnings before checking
+            warn_empty.setVisible(false);
+            warn_wrong.setVisible(false);
+
+            String result = Auth_Logic.login(sys, name.getText(), email.getText(), password.getText());
+
+            if (result.equals("empty")) warn_empty.setVisible(true);
+            else if (result.equals("not_found")) warn_wrong.setVisible(true);
+            else if (result.equals("ok")) {
+                // admins go straight to the admin page, regular users go home
+                if (sys.isUserAdmin()) sys.changePage(Page.ADMIN);
+                else sys.changePage(Page.HOME);
             }
         });
         return vb;
@@ -124,6 +136,19 @@ public class Auth_UI {
         type_picker.setAlignment(Pos.CENTER);
         type_picker.getChildren().addAll(personal_btn, business_btn);
 
+        // warning shown when a required field is left empty
+        Label warn_empty = new Label("Fill in all fields");
+        warn_empty.setFont(Font.font("Nunito", 16));
+        warn_empty.setTextFill(Color.RED);
+        warn_empty.setVisible(false);
+        warn_empty.managedProperty().bind(warn_empty.visibleProperty());
+
+        // warning shown when the name or email is already taken
+        Label duplicate_error = new Label("A user with this name or email exists, try logging in");
+        duplicate_error.setFont(Font.font("Nunito", 16));
+        duplicate_error.setTextFill(Color.RED);
+        duplicate_error.setVisible(false);
+        duplicate_error.managedProperty().bind(duplicate_error.visibleProperty());
 
         // Form Fields
         TextField name = FormField("Name");
@@ -174,12 +199,15 @@ public class Auth_UI {
 
         l2.setOnMouseClicked(e -> changePage(true));
 
-        // Toggle between business mode or personal
+        // toggle between business mode or personal
         personal_btn.setOnAction(e -> {
             isPersonal[0] = true;
+            // hide warnings when switching modes
+            warn_empty.setVisible(false);
+            duplicate_error.setVisible(false);
             UI.getChildren().clear();
             vb = Box("Sign Up", 10, Color.hsb(35, 0.08, 0.46, 1), 15);;
-            vb.getChildren().addAll(type_picker, name, email, phone, password, btn, little_switch);
+            vb.getChildren().addAll(warn_empty, duplicate_error, type_picker, name, email, phone, password, btn, little_switch);
             personal_btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(12), null)));
             business_btn.setBackground(Background.EMPTY);
             UI.getChildren().add(vb);
@@ -190,9 +218,12 @@ public class Auth_UI {
 
         business_btn.setOnAction(e -> {
             isPersonal[0] = false;
+            // hide warnings when switching modes
+            warn_empty.setVisible(false);
+            duplicate_error.setVisible(false);
             UI.getChildren().clear();
             vb = Box("Sign Up", 10, Color.hsb(35, 0.08, 0.46, 1), 15);;
-            vb.getChildren().addAll(type_picker, name, email, phone, password, location, kind_of_business, tax_id, reg_number, btn, little_switch);
+            vb.getChildren().addAll(warn_empty, duplicate_error, type_picker, name, email, phone, password, location, kind_of_business, tax_id, reg_number, btn, little_switch);
             business_btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(12), null)));
             personal_btn.setBackground(Background.EMPTY);
             UI.getChildren().add(vb);
@@ -202,21 +233,27 @@ public class Auth_UI {
         });
 
         VBox.setMargin(btn, new Insets(7, 0, 0, 0));
-        vb.getChildren().addAll(type_picker, name, email, phone, password, btn, little_switch);
+        vb.getChildren().addAll(warn_empty, duplicate_error, type_picker, name, email, phone, password, btn, little_switch);
         vb.setAlignment(Pos.CENTER);
         signBox = vb;
 
         btn.setOnAction(e -> {
-            try {
-                Connection conn = sys.getConn();
-                Statement stmt = conn.createStatement();
-                if (isPersonal[0]) {
-                    stmt.addBatch("INSERT INTO Person (person_id, name, email, password) VALUES (" + 1 + ",'" + name.getText() + "','" + email.getText() + "','" + password.getText() + "');");
-                } else {}
-                stmt.executeBatch();
-            } catch (SQLException ex) {
-                throw new RuntimeException(ex);
+            // hide any previous warnings before checking
+            warn_empty.setVisible(false);
+            duplicate_error.setVisible(false);
+
+            String result;
+            if (isPersonal[0]) {
+                result = Auth_Logic.signupPersonal(sys, name.getText(), email.getText(), phone.getText(), password.getText());
+            } else {
+                String kind = kind_of_business.getValue() != null ? kind_of_business.getValue() : "";
+                result = Auth_Logic.signupBusiness(sys, name.getText(), email.getText(), phone.getText(), password.getText(), location.getText(), kind, tax_id.getText(), reg_number.getText());
             }
+
+            if (result.equals("empty")) warn_empty.setVisible(true);
+            else if (result.equals("duplicate")) duplicate_error.setVisible(true);
+            // signup logged the user in already so jump straight to home without rebuilding the form
+            else if (result.equals("ok")) sys.changePage(Page.HOME);
         });
         return vb;
     }
