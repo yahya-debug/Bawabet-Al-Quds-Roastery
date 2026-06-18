@@ -1,5 +1,7 @@
 package app.db_proj;
 
+import app.db_proj.UI.*;
+import app.db_proj.model.Item;
 import javafx.scene.control.Label;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
@@ -47,9 +49,18 @@ public class SystemHandling {
         home_page = new Home_UI(this);
         cart_page = new CartUI(this);
 
+        // create Cart table if it doesn't exist yet
+        Cart_Logic.ensureCartTable(conn);
+        // add image_path column to Item and create Supplier table if needed
+        Admin_Logic.ensureItemImageColumn(conn);
+        Admin_Logic.ensureSupplierTable(conn);
+
+        // wire the nav-bar search to the home page item filter
+        Top.setSearchAction(q -> home_page.search(q));
+
         // work on root
         root.setTop(Top.getTop());
-        root.setBackground(new Background(new BackgroundFill(Color.web("#F0E8CC"), null, null)));
+        root.setBackground(new Background(new BackgroundFill(Color.web("#EDE0B8"), null, null)));
 
         changePage(curPage);
     }
@@ -60,14 +71,14 @@ public class SystemHandling {
             case SignUp -> root.setCenter(auth_page.changePage(false).getUI());
             case HOME -> root.setCenter(home_page.getSP());
             case CART -> {
+                cart_page.refresh();
                 root.setCenter(cart_page.getScreen());
-                if (!curPage.equals(Page.CART)) {
-                    Label text = new Label("Cart");
-                    text.setTextFill(Color.hsb(48, 1, 0.92, 1));
-                    text.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 30));
-                    Top.getLeft().getChildren().add(text);
-                    Top.getTop().setCenter(null);
-                }
+                Top.getLeft().getChildren().removeIf(n -> n instanceof Label);
+                Label text = new Label("Cart");
+                text.setTextFill(Color.hsb(48, 1, 0.92, 1));
+                text.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 30));
+                Top.getLeft().getChildren().add(text);
+                Top.getTop().setCenter(null);
             }
             case PROFILE -> openProf();
             case ADMIN -> {
@@ -88,6 +99,15 @@ public class SystemHandling {
     }
     public void hideProf() {
         screen.getChildren().remove(screen.getChildren().size() - 1);
+    }
+
+    public void openItemDetail(Item item) {
+        screen.getChildren().add(new ItemDetailUI(this, item).getOverlay());
+    }
+
+    public void hideItemDetail() {
+        if (screen.getChildren().size() > 1)
+            screen.getChildren().remove(screen.getChildren().size() - 1);
     }
 
     public boolean isAuthenticated() {
@@ -136,6 +156,19 @@ public class SystemHandling {
 
     public boolean isUserAdmin() {
         return userIsAdmin;
+    }
+
+    public void logout() {
+        authenticated = false;
+        currentUserId = null;
+        currentUserName = null;
+        currentUserEmail = null;
+        userIsAdmin = false;
+        admin_page = null;
+        hideProf();
+        Top.getLeft().getChildren().removeIf(n -> n instanceof Label);
+        Top.refreshAuth();
+        changePage(Page.HOME);
     }
 
     public Integer getCurrentUserId() {

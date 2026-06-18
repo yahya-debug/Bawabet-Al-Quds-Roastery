@@ -71,6 +71,52 @@ public class Admin_Logic {
         }
     }
 
+    // small holder for one item row
+    public static class ItemRow {
+        private final int itemId;
+        private final String name;
+        private final double price;
+        private final String itemType;
+        private final String imagePath;
+        private final String supplierName;
+
+        public ItemRow(int itemId, String name, double price, String itemType, String imagePath, String supplierName) {
+            this.itemId = itemId;
+            this.name = name;
+            this.price = price;
+            this.itemType = itemType;
+            this.imagePath = imagePath;
+            this.supplierName = supplierName;
+        }
+
+        public int getItemId()          { return itemId; }
+        public String getName()         { return name; }
+        public double getPrice()        { return price; }
+        public String getItemType()     { return itemType; }
+        public String getImagePath()    { return imagePath; }
+        public String getSupplierName() { return supplierName; }
+    }
+
+    // small holder for one supplier row
+    public static class SupplierRow {
+        private final int supplierId;
+        private final String name;
+        private final String email;
+        private final String phone;
+
+        public SupplierRow(int supplierId, String name, String email, String phone) {
+            this.supplierId = supplierId;
+            this.name = name;
+            this.email = email;
+            this.phone = phone;
+        }
+
+        public int getSupplierId()  { return supplierId; }
+        public String getName()     { return name; }
+        public String getEmail()    { return email; }
+        public String getPhone()    { return phone; }
+    }
+
     // fetch all customers joined with their person info
     public static List<CustomerRow> getCustomers(Connection conn) {
         List<CustomerRow> list = new ArrayList<>();
@@ -135,6 +181,106 @@ public class Admin_Logic {
         return list;
     }
 
+    // small holder for branch info joined with its location row
+    public static class BranchDetailRow {
+        public final int branchId;
+        public final String name;
+        public final String street;
+        public final String city;
+        public final String zip;
+
+        public BranchDetailRow(int branchId, String name, String street, String city, String zip) {
+            this.branchId = branchId;
+            this.name = name;
+            this.street = street;
+            this.city = city;
+            this.zip = zip;
+        }
+    }
+
+    // return the branch_id managed by the given admin, or -1 if not found
+    public static int getAdminBranchId(Connection conn, int adminPersonId) {
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT branch_id FROM Admin WHERE person_id = ?"
+            );
+            ps.setInt(1, adminPersonId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt("branch_id");
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+        }
+        return -1;
+    }
+
+    // fetch branch details joined with location for the given branch_id
+    public static BranchDetailRow getBranchDetail(Connection conn, int branchId) {
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT B.branch_id, B.branch_name, L.street, L.city, L.zip " +
+                "FROM Branch B JOIN Location L ON B.location_id = L.location_id " +
+                "WHERE B.branch_id = ?"
+            );
+            ps.setInt(1, branchId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return new BranchDetailRow(
+                    rs.getInt("branch_id"),
+                    rs.getString("branch_name"),
+                    rs.getString("street"),
+                    rs.getString("city"),
+                    rs.getString("zip")
+                );
+            }
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+        }
+        return null;
+    }
+
+    // fetch employees that belong to the given branch
+    public static List<EmployeeRow> getEmployeesByBranch(Connection conn, int branchId) {
+        List<EmployeeRow> list = new ArrayList<>();
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT P.person_id, P.name, P.email, E.role, E.salary, E.hire_date, E.branch_id " +
+                "FROM Person P JOIN Employee E ON P.person_id = E.person_id " +
+                "WHERE E.branch_id = ?"
+            );
+            ps.setInt(1, branchId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(new EmployeeRow(
+                    rs.getInt("person_id"),
+                    rs.getString("name"),
+                    rs.getString("email"),
+                    rs.getString("role"),
+                    rs.getDouble("salary"),
+                    rs.getString("hire_date"),
+                    rs.getInt("branch_id")
+                ));
+            }
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+        }
+        return list;
+    }
+
+    // count employees assigned to a branch (used in the branch info card)
+    public static int getEmployeeCountByBranch(Connection conn, int branchId) {
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT COUNT(*) AS cnt FROM Employee WHERE branch_id = ?"
+            );
+            ps.setInt(1, branchId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt("cnt");
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+        }
+        return 0;
+    }
+
     // insert a new admin in two steps, first into Person then into Admin
     // returns ok, empty, duplicate, or error
     public static String registerAdmin(Connection conn, String name, String email, String password, Integer branchId) {
@@ -156,6 +302,201 @@ public class Admin_Logic {
             adminStmt.executeUpdate(
                 "INSERT INTO Admin (person_id, branch_id) VALUES (" + personId + "," + branchId + ");"
             );
+            return "ok";
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+            if ("23000".equals(ex.getSQLState())) return "duplicate";
+            return "error";
+        }
+    }
+
+    // fetch all branches with their location details
+    public static List<BranchDetailRow> getAllBranches(Connection conn) {
+        List<BranchDetailRow> list = new ArrayList<>();
+        try {
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(
+                "SELECT B.branch_id, B.branch_name, L.street, L.city, L.zip " +
+                "FROM Branch B JOIN Location L ON B.location_id = L.location_id;"
+            );
+            while (rs.next()) {
+                list.add(new BranchDetailRow(
+                    rs.getInt("branch_id"),
+                    rs.getString("branch_name"),
+                    rs.getString("street"),
+                    rs.getString("city"),
+                    rs.getString("zip")
+                ));
+            }
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+        }
+        return list;
+    }
+
+    // insert a new branch — first creates a location row, then the branch row
+    public static String addBranch(Connection conn, String name, String street, String city, String zip) {
+        if (name.isBlank() || street.isBlank() || city.isBlank() || zip.isBlank()) return "empty";
+        try {
+            PreparedStatement locStmt = conn.prepareStatement(
+                "INSERT INTO Location (street, city, zip) VALUES (?, ?, ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            locStmt.setString(1, street);
+            locStmt.setString(2, city);
+            locStmt.setString(3, zip);
+            locStmt.executeUpdate();
+            ResultSet keys = locStmt.getGeneratedKeys();
+            if (!keys.next()) return "error";
+            int locationId = keys.getInt(1);
+
+            PreparedStatement branchStmt = conn.prepareStatement(
+                "INSERT INTO Branch (branch_name, location_id) VALUES (?, ?)"
+            );
+            branchStmt.setString(1, name);
+            branchStmt.setInt(2, locationId);
+            branchStmt.executeUpdate();
+            return "ok";
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+            return "error";
+        }
+    }
+
+    // fetch all items joined with their supplier name
+    public static List<ItemRow> getItems(Connection conn) {
+        List<ItemRow> list = new ArrayList<>();
+        try {
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(
+                "SELECT I.item_id, I.name, I.price, I.item_type, I.image_path, S.name AS supplier_name " +
+                "FROM Item I LEFT JOIN Supplier S ON I.supplier_id = S.supplier_id;"
+            );
+            while (rs.next()) {
+                list.add(new ItemRow(
+                    rs.getInt("item_id"),
+                    rs.getString("name"),
+                    rs.getDouble("price"),
+                    rs.getString("item_type"),
+                    rs.getString("image_path"),
+                    rs.getString("supplier_name")
+                ));
+            }
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+        }
+        return list;
+    }
+
+    // insert a new item into the Item table; imagePath may be null
+    public static String addItem(Connection conn, String name, String priceStr, String itemType, String imagePath) {
+        if (name.isBlank() || priceStr.isBlank() || itemType.isBlank()) return "empty";
+        try {
+            double price = Double.parseDouble(priceStr);
+            PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO Item (name, price, item_type, image_path) VALUES (?, ?, ?, ?)"
+            );
+            ps.setString(1, name);
+            ps.setDouble(2, price);
+            ps.setString(3, itemType);
+            ps.setString(4, (imagePath != null && !imagePath.isBlank()) ? imagePath : null);
+            ps.executeUpdate();
+            return "ok";
+        } catch (NumberFormatException ex) {
+            return "price_error";
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+            return "error";
+        }
+    }
+
+    // adds image_path column to Item if it does not already exist
+    public static void ensureItemImageColumn(Connection conn) {
+        try {
+            conn.createStatement().executeUpdate(
+                "ALTER TABLE Item ADD COLUMN image_path VARCHAR(500) NULL"
+            );
+        } catch (SQLException ex) {
+            // duplicate column error (1060) means it already exists — safe to ignore
+        }
+    }
+
+    // creates the Supplier table if it does not exist yet
+    public static void ensureSupplierTable(Connection conn) {
+        try {
+            conn.createStatement().executeUpdate(
+                "CREATE TABLE IF NOT EXISTS Supplier (" +
+                "supplier_id INT AUTO_INCREMENT PRIMARY KEY, " +
+                "name        VARCHAR(100) NOT NULL, " +
+                "email       VARCHAR(100), " +
+                "phone       VARCHAR(45)" +
+                ")"
+            );
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+        }
+    }
+
+    // fetch all suppliers
+    public static List<SupplierRow> getSuppliers(Connection conn) {
+        List<SupplierRow> list = new ArrayList<>();
+        try {
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT supplier_id, name, email, phone FROM Supplier;");
+            while (rs.next()) {
+                list.add(new SupplierRow(
+                    rs.getInt("supplier_id"),
+                    rs.getString("name"),
+                    rs.getString("email"),
+                    rs.getString("phone")
+                ));
+            }
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+        }
+        return list;
+    }
+
+    // insert a new supplier; phone is optional
+    public static String addSupplier(Connection conn, String name, String email, String phone) {
+        if (name.isBlank() || email.isBlank()) return "empty";
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO Supplier (name, email, phone) VALUES (?, ?, ?)"
+            );
+            ps.setString(1, name);
+            ps.setString(2, email);
+            ps.setString(3, phone.isBlank() ? null : phone);
+            ps.executeUpdate();
+            return "ok";
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+            return "error";
+        }
+    }
+
+    // insert a new personal customer (Person + Customer rows)
+    public static String addCustomer(Connection conn, String name, String email, String password, String type) {
+        if (name.isBlank() || email.isBlank() || password.isBlank()) return "empty";
+        try {
+            PreparedStatement personStmt = conn.prepareStatement(
+                "INSERT INTO Person (name, email, password) VALUES (?, ?, ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            personStmt.setString(1, name);
+            personStmt.setString(2, email);
+            personStmt.setString(3, password);
+            personStmt.executeUpdate();
+            ResultSet keys = personStmt.getGeneratedKeys();
+            if (!keys.next()) return "error";
+            int personId = keys.getInt(1);
+
+            PreparedStatement custStmt = conn.prepareStatement(
+                "INSERT INTO Customer (person_id, type) VALUES (?, ?)"
+            );
+            custStmt.setInt(1, personId);
+            custStmt.setString(2, type);
+            custStmt.executeUpdate();
             return "ok";
         } catch (SQLException ex) {
             System.out.println(ex.getMessage());
