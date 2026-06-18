@@ -66,9 +66,9 @@ public class ItemDAO {
     public static ItemStats getStats(Connection conn, int itemId) {
         try {
             PreparedStatement ps = conn.prepareStatement(
-                "SELECT COUNT(DISTINCT R.review_id)      AS review_count, " +
-                "       COALESCE(AVG(R.rating), 0)       AS avg_rating, " +
-                "       COALESCE(SUM(OI.quantity), 0)    AS total_sold " +
+                "SELECT COUNT(DISTINCT R.review_id) AS review_count, " +
+                "       AVG(R.rating)              AS avg_rating, " +
+                "       SUM(OI.quantity)            AS total_sold " +
                 "FROM Item I " +
                 "LEFT JOIN Review    R  ON I.item_id = R.item_id " +
                 "LEFT JOIN OrderItem OI ON I.item_id = OI.item_id " +

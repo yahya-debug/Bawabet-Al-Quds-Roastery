@@ -112,7 +112,7 @@ public class Cart_Logic {
     public static double getCartTotal(Connection conn, int userId) {
         try {
             PreparedStatement ps = conn.prepareStatement(
-                "SELECT COALESCE(SUM(I.price * C.quantity), 0) AS total " +
+                "SELECT SUM(I.price * C.quantity) AS total " +
                 "FROM Cart C JOIN Item I ON C.item_id = I.item_id WHERE C.person_id = ?"
             );
             ps.setInt(1, userId);

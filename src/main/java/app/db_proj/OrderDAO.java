@@ -19,7 +19,7 @@ public class OrderDAO {
 
             // sum the cart total first
             PreparedStatement totalPs = conn.prepareStatement(
-                "SELECT COALESCE(SUM(I.price * C.quantity), 0) AS total " +
+                "SELECT SUM(I.price * C.quantity) AS total " +
                 "FROM Cart C JOIN Item I ON C.item_id = I.item_id WHERE C.person_id = ?"
             );
             totalPs.setInt(1, personId);
