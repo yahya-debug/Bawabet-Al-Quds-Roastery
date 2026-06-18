@@ -1,10 +1,13 @@
-package app.db_proj;
+package app.db_proj.UI;
 
+import app.db_proj.Labels;
+import app.db_proj.Page;
+import app.db_proj.Profile_Logic;
+import app.db_proj.SystemHandling;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.Button;
-import javafx.scene.control.Cell;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
@@ -35,7 +38,7 @@ public class ProfileUI {
 
         main_block = new VBox(10);
         main_block.setPadding(new Insets(12));
-        main_block.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(15), null)));
+        main_block.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.20, 0.22, 1), new CornerRadii(15), null)));
         main_block.prefWidthProperty().bind(SP.widthProperty().multiply(.3));
         main_block.maxWidthProperty().bind(SP.widthProperty().multiply(.3));
         main_block.setMinWidth(355);
@@ -66,20 +69,20 @@ public class ProfileUI {
 
         HBox editProfBtn = profileBtn("Edit Profile");
         editProfBtn.setOnMouseClicked(e -> editProf());
-        editProfBtn.setOnMouseEntered(e -> editProfBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(12), null))));
-        editProfBtn.setOnMouseExited(e -> editProfBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null))));
+        editProfBtn.setOnMouseEntered(e -> editProfBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.15, 0.34, 1), new CornerRadii(12), null))));
+        editProfBtn.setOnMouseExited(e -> editProfBtn.setBackground(Background.EMPTY));
 
 
         HBox ordersBtn = profileBtn("My Orders");
         ordersBtn.setOnMouseClicked(e -> sys.changePage(Page.ORDERS));
-        ordersBtn.setOnMouseEntered(e -> ordersBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(12), null))));
-        ordersBtn.setOnMouseExited(e -> ordersBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null))));
+        ordersBtn.setOnMouseEntered(e -> ordersBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.15, 0.34, 1), new CornerRadii(12), null))));
+        ordersBtn.setOnMouseExited(e -> ordersBtn.setBackground(Background.EMPTY));
 
 
         HBox cartBtn = profileBtn("Cart");
         cartBtn.setOnMouseClicked(e -> { sys.hideProf(); sys.changePage(Page.CART); });
-        cartBtn.setOnMouseEntered(e -> cartBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(12), null))));
-        cartBtn.setOnMouseExited(e -> cartBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null))));
+        cartBtn.setOnMouseEntered(e -> cartBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.15, 0.34, 1), new CornerRadii(12), null))));
+        cartBtn.setOnMouseExited(e -> cartBtn.setBackground(Background.EMPTY));
 
         // only build the Admin Panel entry when the logged in person is in the Admin table
         // we keep the variable nullable so the head can decide whether to add it
@@ -90,12 +93,13 @@ public class ProfileUI {
             adminBtn = profileBtn("Admin Panel");
             HBox finalAdminBtn = adminBtn;
             adminBtn.setOnMouseClicked(e -> { sys.hideProf(); sys.changePage(Page.ADMIN); });
-            adminBtn.setOnMouseEntered(e -> finalAdminBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(12), null))));
-            adminBtn.setOnMouseExited(e -> finalAdminBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null))));
+            adminBtn.setOnMouseEntered(e -> finalAdminBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.15, 0.34, 1), new CornerRadii(12), null))));
+            adminBtn.setOnMouseExited(e -> finalAdminBtn.setBackground(Background.EMPTY));
         }
 
 
         Button LogoutBtn = new Buttons("Log out", null).getBtn();
+        LogoutBtn.setOnAction(e -> sys.logout());
         LogoutBtn.setBorder(new Border(new BorderStroke(Color.hsb(5, 1, .4), BorderStrokeStyle.SOLID, new CornerRadii(10), new BorderWidths(2))));
         LogoutBtn.setPadding(new Insets(5, 7, 5, 7));
         LogoutBtn.setFont(Font.font("Nunito", 23));
@@ -177,8 +181,8 @@ public class ProfileUI {
         retBox.setPadding(new Insets(5, 7, 5, 7));
         retBox.setCursor(Cursor.HAND);
 
-        retBox.setOnMouseEntered(e -> retBox.setBackground(new Background(new BackgroundFill(Color.hsb(0, 0, 0.48, 1), new CornerRadii(10), null))));
-        retBox.setOnMouseExited(e -> retBox.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(10), null))));
+        retBox.setOnMouseEntered(e -> retBox.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.15, 0.34, 1), new CornerRadii(10), null))));
+        retBox.setOnMouseExited(e -> retBox.setBackground(Background.EMPTY));
 
         retBox.getChildren().addAll(label);
         return retBox;
@@ -190,11 +194,9 @@ public class ProfileUI {
         Label label = new Labels(txt, Font.font("Nunito", FontWeight.BOLD, 18), Color.hsb(30, 0.12, 0.78)).getLabel();
 
         TextField tf = new TextField(data);
-        tf.setStyle("-fx-text-fill: #fff; -fx-prompt-text-fill: hsb(30, 12%, 78%);");
+        tf.setStyle("-fx-control-inner-background: #1a1a1a; -fx-text-fill: #d4c0a0; -fx-prompt-text-fill: #5a4a38; -fx-background-radius: 10; -fx-font-size: 17px;");
         tf.setPromptText(txt);
         tf.setFont(Font.font("Nunito", 17));
-        tf.setBackground(new Background(new BackgroundFill(Color.hsb(0, 0, 0.25, 1), new CornerRadii(10), null)));
-        tf.setBorder(new Border(new BorderStroke(Color.hsb(48, 1, 0.92, 1), BorderStrokeStyle.SOLID, new CornerRadii(10), null)));
         HBox.setHgrow(tf, Priority.ALWAYS);
 
         retBox.getChildren().addAll(label, tf);

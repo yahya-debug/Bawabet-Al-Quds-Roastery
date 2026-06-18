@@ -1,11 +1,12 @@
-package app.db_proj;
+package app.db_proj.UI;
 
+import app.db_proj.Page;
+import app.db_proj.SystemHandling;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -39,32 +40,33 @@ public class Navigation_Bar {
 
 
 
-        Top.setPadding(new Insets(20, 15, 20, 15));
-        titleBox.setPadding(new Insets(12));
+        Top.setPadding(new Insets(14, 20, 14, 20));
+        Top.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.22, 0.15, 1), new CornerRadii(0), null)));
+        Top.setBorder(new Border(new BorderStroke(Color.hsb(48, 0.55, 0.32, 1), BorderStrokeStyle.SOLID, null, new BorderWidths(0, 0, 2, 0))));
+        titleBox.setPadding(new Insets(10, 14, 10, 14));
         left.setAlignment(Pos.CENTER);
-        titleBox.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null)));
+        titleBox.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.18, 0.26, 1), new CornerRadii(12), null)));
         titleBox.setCursor(Cursor.HAND);
         Label title = new Label("Bawabet Al-Quds");
         title.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 35));
         title.setTextFill(Color.hsb(48, 1, 0.92, 1));
         titleBox.setOnMouseClicked(e -> {
-            if (sys.isUserAdmin())  sys.changePage(Page.ADMIN);
-            sys.changePage(Page.HOME);
             right = RightBlock(sys.isAuthenticated());
-            nav = CenterBlock();
             left.getChildren().clear();
-
-
-            left.getChildren().addAll(titleBox);
-
-
+            left.getChildren().add(titleBox);
             Top.setLeft(left);
-            Top.setCenter(nav);
             Top.setRight(right);
             BorderPane.setAlignment(left, Pos.CENTER);
-            BorderPane.setAlignment(nav, Pos.CENTER);
             BorderPane.setAlignment(right, Pos.CENTER);
-
+            if (sys.isUserAdmin()) {
+                sys.changePage(Page.ADMIN);
+                Top.setCenter(null);
+            } else {
+                sys.changePage(Page.HOME);
+                nav = CenterBlock();
+                Top.setCenter(nav);
+                BorderPane.setAlignment(nav, Pos.CENTER);
+            }
         });
 
 
@@ -87,6 +89,20 @@ public class Navigation_Bar {
         retBox.setMaxHeight(52);
 
         if (authenticated) {
+            if (sys.isUserAdmin()) {
+                Button adminBtn = new Button("Admin Panel");
+                adminBtn.setPadding(new Insets(10, 22, 10, 22));
+                adminBtn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(13), null)));
+                adminBtn.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 20));
+                adminBtn.setTextFill(Color.BLACK);
+                adminBtn.setCursor(Cursor.HAND);
+                adminBtn.setOnMouseEntered(e -> adminBtn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.75, 1), new CornerRadii(13), null))));
+                adminBtn.setOnMouseExited(e -> adminBtn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(13), null))));
+                adminBtn.setOnAction(e -> sys.changePage(Page.ADMIN));
+                retBox.getChildren().add(adminBtn);
+                return retBox;
+            }
+
             ImageView cart_icon = new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/icons8-shopping-cart-96.png")));
             ImageView profile_icon = new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/icons8-profile-96.png")));
 
@@ -213,16 +229,15 @@ public class Navigation_Bar {
     // called by SystemHandling after login or signup
     // admins get logo only, no search bar, no cart, no profile icons
     public void refreshAuth() {
+        right = RightBlock(sys.isAuthenticated());
+        Top.setRight(right);
+        BorderPane.setAlignment(right, Pos.CENTER);
         if (sys.isAuthenticated() && sys.isUserAdmin()) {
             Top.setCenter(null);
-            Top.setRight(null);
         } else {
-            right = RightBlock(sys.isAuthenticated());
             nav = CenterBlock();
             Top.setCenter(nav);
-            Top.setRight(right);
             BorderPane.setAlignment(nav, Pos.CENTER);
-            BorderPane.setAlignment(right, Pos.CENTER);
         }
         Top.setLeft(left);
         BorderPane.setAlignment(left, Pos.CENTER);

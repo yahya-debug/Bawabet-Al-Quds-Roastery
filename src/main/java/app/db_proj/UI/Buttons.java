@@ -1,4 +1,4 @@
-package app.db_proj;
+package app.db_proj.UI;
 
 import javafx.scene.Cursor;
 import javafx.scene.control.Button;

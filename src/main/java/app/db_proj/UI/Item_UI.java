@@ -1,14 +1,14 @@
-package app.db_proj;
+package app.db_proj.UI;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-import javafx.geometry.Pos;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -17,36 +17,40 @@ public class Item_UI {
 
     /** Vertical product card used in the Home catalogue grid. */
     public static VBox makeProductCard(String itemName, double price, String type, Image itemImage) {
-        VBox card = new VBox(8);
-        card.setPrefWidth(210);
-        card.setPadding(new Insets(14));
+        VBox card = new VBox(10);
+        card.setPrefWidth(220);
+        card.setPadding(new Insets(18, 16, 18, 16));
         card.setAlignment(Pos.TOP_CENTER);
-        card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null)));
+        card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.14, 0.38, 1), new CornerRadii(16), null)));
         card.setCursor(Cursor.HAND);
-        card.setOnMouseEntered(e -> card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.38, 1), new CornerRadii(12), null))));
-        card.setOnMouseExited(e -> card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.08, 0.46, 1), new CornerRadii(12), null))));
+        card.setOnMouseEntered(e -> card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.16, 0.44, 1), new CornerRadii(16), null))));
+        card.setOnMouseExited(e -> card.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.14, 0.38, 1), new CornerRadii(16), null))));
 
         ImageView img = new ImageView(itemImage);
-        img.setFitWidth(90);
-        img.setFitHeight(90);
+        img.setFitWidth(100);
+        img.setFitHeight(100);
         img.setPreserveRatio(true);
 
         Label typeLabel = new Label(type.toUpperCase());
-        typeLabel.setFont(Font.font("Nunito", 12));
-        typeLabel.setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+        typeLabel.setFont(Font.font("Nunito", 11));
+        typeLabel.setTextFill(Color.hsb(48, 0.6, 0.72, 1));
+
+        Separator sep = new Separator();
+        sep.setStyle("-fx-background-color: hsb(35, 0.15, 0.50);");
+        sep.setMaxWidth(160);
 
         Label nameLabel = new Label(itemName);
         nameLabel.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 14));
         nameLabel.setTextFill(Color.WHITE);
         nameLabel.setWrapText(true);
-        nameLabel.setMaxWidth(182);
+        nameLabel.setMaxWidth(188);
         nameLabel.setAlignment(Pos.CENTER);
 
         Label priceLabel = new Label(String.format("₪ %.2f", price));
-        priceLabel.setFont(Font.font("Nunito", FontWeight.BOLD, 16));
+        priceLabel.setFont(Font.font("Nunito", FontWeight.BOLD, 17));
         priceLabel.setTextFill(Color.hsb(48, 1, 0.92, 1));
 
-        card.getChildren().addAll(img, typeLabel, nameLabel, priceLabel);
+        card.getChildren().addAll(img, typeLabel, sep, nameLabel, priceLabel);
         return card;
     }
 

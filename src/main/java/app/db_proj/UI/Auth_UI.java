@@ -1,11 +1,15 @@
-package app.db_proj;
+package app.db_proj.UI;
 
+import app.db_proj.Auth_Logic;
+import app.db_proj.Page;
+import app.db_proj.SystemHandling;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.*;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -262,19 +266,19 @@ public class Auth_UI {
         vb = new VBox(gap);
 
         Label title_ = new Label(title);
-        title_.setFont(Font.font("Adwaita Mono", FontWeight.EXTRA_BOLD, 25));
+        title_.setFont(Font.font("Adwaita Mono", FontWeight.EXTRA_BOLD, 26));
         title_.setTextFill(Color.hsb(48, 1, 0.92, 1));
 
-        VBox.setMargin(title_, new Insets(0, 0, 7, 0));
+        VBox.setMargin(title_, new Insets(0, 0, 10, 0));
 
-        vb.setBackground(new Background(new BackgroundFill(bc, new CornerRadii(rad), null)));
-        vb.setPadding(new Insets(7, 15, 15, 15));
+        vb.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.18, 0.28, 1), new CornerRadii(rad + 4), null)));
+        vb.setPadding(new Insets(22, 22, 22, 22));
+        vb.setEffect(new DropShadow(18, 0, 4, Color.hsb(35, 0.25, 0.05, 0.55)));
         vb.getChildren().add(title_);
-
 
         vb.setAlignment(Pos.CENTER);
 
-        vb.setPrefWidth(400);
+        vb.setPrefWidth(420);
         return vb;
     }
 
@@ -282,18 +286,21 @@ public class Auth_UI {
         TextField tf = new TextField();
         tf.setPromptText(text);
         tf.setFont(Font.font("Nunito", 17));
-        tf.setBackground(new Background(new BackgroundFill(Color.hsb(0, 0, 0.25, 1), new CornerRadii(7), null)));
-        tf.setStyle("-fx-text-fill: white;");
+        tf.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.10, 0.20, 1), new CornerRadii(9), null)));
+        tf.setStyle("-fx-text-fill: white; -fx-prompt-text-fill: derive(-fx-control-inner-background, 50%);");
+        tf.setPadding(new Insets(8, 10, 8, 10));
         return tf;
     }
     public Button FormBtn(String text) {
         Button btn = new Button(text);
         btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(12), null)));
-        btn.setPadding(new Insets(7, 20, 7, 20));
-        btn.setFont(Font.font("Nunito", 18));
+        btn.setPadding(new Insets(10, 20, 10, 20));
+        btn.setFont(Font.font("Nunito", FontWeight.BOLD, 18));
         btn.setTextFill(Color.BLACK);
         btn.setCursor(Cursor.HAND);
         btn.setMaxWidth(Double.MAX_VALUE);
+        btn.setOnMouseEntered(e -> btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.75, 1), new CornerRadii(12), null))));
+        btn.setOnMouseExited(e -> btn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(12), null))));
         return btn;
     }
 
