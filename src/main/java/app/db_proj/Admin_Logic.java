@@ -198,6 +198,42 @@ public class Admin_Logic {
         }
     }
 
+    // return the branch_id where the given employee works, or -1 if not found
+    public static int getEmployeeBranchId(Connection conn, int personId) {
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT branch_id FROM Employee WHERE person_id = ?"
+            );
+            ps.setInt(1, personId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt("branch_id");
+        } catch (SQLException ex) { System.out.println(ex.getMessage()); }
+        return -1;
+    }
+
+    // items that exist in the catalog but have no BranchInventory row for the given branch
+    public static List<ItemRow> getItemsNotAtBranch(Connection conn, int branchId) {
+        List<ItemRow> list = new ArrayList<>();
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT I.item_id, I.name, I.price, I.item_type, I.image_path, S.name AS supplier_name " +
+                "FROM Item I " +
+                "LEFT JOIN Supplier S ON I.supplier_id = S.supplier_id " +
+                "LEFT JOIN BranchInventory BI ON I.item_id = BI.item_id AND BI.branch_id = ? " +
+                "WHERE BI.item_id IS NULL ORDER BY I.name"
+            );
+            ps.setInt(1, branchId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(new ItemRow(
+                    rs.getInt("item_id"), rs.getString("name"), rs.getDouble("price"),
+                    rs.getString("item_type"), rs.getString("image_path"), rs.getString("supplier_name")
+                ));
+            }
+        } catch (SQLException ex) { System.out.println(ex.getMessage()); }
+        return list;
+    }
+
     // return the branch_id managed by the given admin, or -1 if not found
     public static int getAdminBranchId(Connection conn, int adminPersonId) {
         try {
@@ -388,18 +424,24 @@ public class Admin_Logic {
         return list;
     }
 
-    // insert a new item into the Item table; imagePath may be null
-    public static String addItem(Connection conn, String name, String priceStr, String itemType, String imagePath) {
-        if (name.isBlank() || priceStr.isBlank() || itemType.isBlank()) return "empty";
+    // update an existing item's fields; imagePath null means keep the old value
+    public static String updateItem(Connection conn, int itemId,
+                                    String name, String priceStr, String wholesaleStr,
+                                    String itemType, String imagePath) {
+        if (name.isBlank() || priceStr.isBlank()) return "empty";
         try {
-            double price = Double.parseDouble(priceStr);
+            double price     = Double.parseDouble(priceStr);
+            double wholesale = wholesaleStr.isBlank() ? 0 : Double.parseDouble(wholesaleStr);
             PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO Item (name, price, item_type, image_path) VALUES (?, ?, ?, ?)"
+                "UPDATE Item SET name=?, price=?, wholesale_price=?, item_type=?, image_path=? " +
+                "WHERE item_id=?"
             );
             ps.setString(1, name);
             ps.setDouble(2, price);
-            ps.setString(3, itemType);
-            ps.setString(4, (imagePath != null && !imagePath.isBlank()) ? imagePath : null);
+            ps.setDouble(3, wholesale);
+            ps.setString(4, itemType.isBlank() ? null : itemType);
+            ps.setString(5, imagePath != null && !imagePath.isBlank() ? imagePath : null);
+            ps.setInt(6, itemId);
             ps.executeUpdate();
             return "ok";
         } catch (NumberFormatException ex) {
@@ -408,6 +450,85 @@ public class Admin_Logic {
             System.out.println(ex.getMessage());
             return "error";
         }
+    }
+
+    // insert a new item; returns the new item_id (>0), -1 for empty, -2 for price error, -3 for SQL error
+    public static int addItem(Connection conn, String name, String priceStr, String itemType, String imagePath) {
+        if (name.isBlank() || priceStr.isBlank() || itemType.isBlank()) return -1;
+        try {
+            double price = Double.parseDouble(priceStr);
+            PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO Item (name, price, item_type, image_path) VALUES (?, ?, ?, ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            ps.setString(1, name);
+            ps.setDouble(2, price);
+            ps.setString(3, itemType);
+            ps.setString(4, (imagePath != null && !imagePath.isBlank()) ? imagePath : null);
+            ps.executeUpdate();
+            ResultSet keys = ps.getGeneratedKeys();
+            return keys.next() ? keys.getInt(1) : -3;
+        } catch (NumberFormatException ex) {
+            return -2;
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+            return -3;
+        }
+    }
+
+    // ── BRANCH INVENTORY ─────────────────────────────────────────────────────
+
+    public static class StockRow {
+        public final int itemId;
+        public final String itemName;
+        public final int quantity;
+        public StockRow(int itemId, String itemName, int quantity) {
+            this.itemId = itemId; this.itemName = itemName; this.quantity = quantity;
+        }
+        public int getItemId()     { return itemId; }
+        public String getItemName(){ return itemName; }
+        public int getQuantity()   { return quantity; }
+    }
+
+    public static List<StockRow> getBranchStock(Connection conn, int branchId) {
+        List<StockRow> list = new ArrayList<>();
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT I.item_id, I.name, BI.quantity " +
+                "FROM BranchInventory BI JOIN Item I ON BI.item_id = I.item_id " +
+                "WHERE BI.branch_id = ? ORDER BY I.name"
+            );
+            ps.setInt(1, branchId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next())
+                list.add(new StockRow(rs.getInt("item_id"), rs.getString("name"), rs.getInt("quantity")));
+        } catch (SQLException ex) { System.out.println(ex.getMessage()); }
+        return list;
+    }
+
+    // Returns total stock across all branches for one item
+    public static int getTotalStock(Connection conn, int itemId) {
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT SUM(quantity) AS total FROM BranchInventory WHERE item_id = ?"
+            );
+            ps.setInt(1, itemId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt("total");
+        } catch (SQLException ex) { System.out.println(ex.getMessage()); }
+        return 0;
+    }
+
+    public static void setStock(Connection conn, int branchId, int itemId, int quantity) {
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO BranchInventory (branch_id, item_id, quantity) VALUES (?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE quantity = ?"
+            );
+            ps.setInt(1, branchId); ps.setInt(2, itemId);
+            ps.setInt(3, quantity); ps.setInt(4, quantity);
+            ps.executeUpdate();
+        } catch (SQLException ex) { System.out.println(ex.getMessage()); }
     }
 
     // adds image_path column to Item if it does not already exist

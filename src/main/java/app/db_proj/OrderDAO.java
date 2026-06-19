@@ -7,46 +7,95 @@ import app.db_proj.model.Review;
 
 import java.sql.*;
 import java.time.LocalDateTime;
+import java.util.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class OrderDAO {
 
-    // place an order from the customer's current cart; returns the new order_id or -1 on failure
+    // Place orders from cart, one per branch. Returns number of orders created, or -1 on failure.
     public static int placeOrder(Connection conn, int personId) {
         try {
             conn.setAutoCommit(false);
 
-            // sum the cart total first
-            PreparedStatement totalPs = conn.prepareStatement(
-                "SELECT SUM(I.price * C.quantity) AS total " +
+            // Collect cart lines grouped by branch_id
+            PreparedStatement cartPs = conn.prepareStatement(
+                "SELECT C.item_id, C.quantity, COALESCE(C.branch_id, 0) AS branch_id, I.price " +
                 "FROM Cart C JOIN Item I ON C.item_id = I.item_id WHERE C.person_id = ?"
             );
-            totalPs.setInt(1, personId);
-            ResultSet totalRs = totalPs.executeQuery();
-            double total = totalRs.next() ? totalRs.getDouble("total") : 0;
+            cartPs.setInt(1, personId);
+            ResultSet cartRs = cartPs.executeQuery();
 
-            // create the order row
-            PreparedStatement orderPs = conn.prepareStatement(
-                "INSERT INTO `Order` (person_id, total) VALUES (?, ?)",
-                Statement.RETURN_GENERATED_KEYS
-            );
-            orderPs.setInt(1, personId);
-            orderPs.setDouble(2, total);
-            orderPs.executeUpdate();
-            ResultSet keys = orderPs.getGeneratedKeys();
-            if (!keys.next()) { conn.rollback(); conn.setAutoCommit(true); return -1; }
-            int orderId = keys.getInt(1);
+            // Map<branchId, list of {itemId, qty}> and Map<branchId, Map<itemId, price>>
+            Map<Integer, List<int[]>>      linesByBranch  = new LinkedHashMap<>();
+            Map<Integer, Map<Integer, Double>> priceMap   = new LinkedHashMap<>();
+            Map<Integer, Double>           totalByBranch  = new LinkedHashMap<>();
 
-            // copy cart rows into OrderItem using their current prices
-            PreparedStatement itemsPs = conn.prepareStatement(
-                "INSERT INTO OrderItem (order_id, item_id, quantity, unit_price) " +
-                "SELECT ?, C.item_id, C.quantity, I.price " +
-                "FROM Cart C JOIN Item I ON C.item_id = I.item_id WHERE C.person_id = ?"
-            );
-            itemsPs.setInt(1, orderId);
-            itemsPs.setInt(2, personId);
-            itemsPs.executeUpdate();
+            while (cartRs.next()) {
+                int    itemId  = cartRs.getInt("item_id");
+                int    qty     = cartRs.getInt("quantity");
+                int    bId     = cartRs.getInt("branch_id");
+                double price   = cartRs.getDouble("price");
+                linesByBranch.computeIfAbsent(bId, k -> new ArrayList<>()).add(new int[]{itemId, qty});
+                priceMap.computeIfAbsent(bId, k -> new HashMap<>()).put(itemId, price);
+                totalByBranch.merge(bId, price * qty, Double::sum);
+            }
+
+            if (linesByBranch.isEmpty()) { conn.setAutoCommit(true); return -1; }
+
+            int ordersCreated = 0;
+
+            for (Map.Entry<Integer, List<int[]>> entry : linesByBranch.entrySet()) {
+                int branchId = entry.getKey();
+                List<int[]> lines = entry.getValue();
+                double total = totalByBranch.get(branchId);
+
+                PreparedStatement orderPs = conn.prepareStatement(
+                    "INSERT INTO `Order` (person_id, branch_id, total) VALUES (?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS
+                );
+                orderPs.setInt(1, personId);
+                if (branchId > 0) orderPs.setInt(2, branchId);
+                else orderPs.setNull(2, Types.INTEGER);
+                orderPs.setDouble(3, total);
+                orderPs.executeUpdate();
+                ResultSet keys = orderPs.getGeneratedKeys();
+                if (!keys.next()) { conn.rollback(); conn.setAutoCommit(true); return -1; }
+                int orderId = keys.getInt(1);
+
+                Map<Integer, Double> prices = priceMap.get(branchId);
+                for (int[] line : lines) {
+                    PreparedStatement itemPs = conn.prepareStatement(
+                        "INSERT INTO OrderItem (order_id, item_id, quantity, unit_price) VALUES (?, ?, ?, ?)"
+                    );
+                    itemPs.setInt(1, orderId);
+                    itemPs.setInt(2, line[0]);
+                    itemPs.setInt(3, line[1]);
+                    itemPs.setDouble(4, prices.get(line[0]));
+                    itemPs.executeUpdate();
+                }
+
+                // auto-assign delivery to employee from this branch
+                if (branchId > 0) {
+                    PreparedStatement empPs = conn.prepareStatement(
+                        "SELECT person_id FROM Employee WHERE branch_id = ? LIMIT 1"
+                    );
+                    empPs.setInt(1, branchId);
+                    ResultSet empRs = empPs.executeQuery();
+                    Integer empId = empRs.next() ? empRs.getInt("person_id") : null;
+
+                    PreparedStatement delivPs = conn.prepareStatement(
+                        "INSERT INTO Delivery (order_id, address, employee_id) VALUES (?, ?, ?)"
+                    );
+                    delivPs.setInt(1, orderId);
+                    delivPs.setString(2, "Branch delivery – branch #" + branchId);
+                    if (empId != null) delivPs.setInt(3, empId);
+                    else delivPs.setNull(3, Types.INTEGER);
+                    delivPs.executeUpdate();
+                }
+
+                ordersCreated++;
+            }
 
             // clear the cart
             PreparedStatement clearPs = conn.prepareStatement("DELETE FROM Cart WHERE person_id = ?");
@@ -55,12 +104,38 @@ public class OrderDAO {
 
             conn.commit();
             conn.setAutoCommit(true);
-            return orderId;
+            return ordersCreated;
         } catch (SQLException ex) {
             System.out.println(ex.getMessage());
             try { conn.rollback(); conn.setAutoCommit(true); } catch (SQLException ignored) {}
             return -1;
         }
+    }
+
+    public static boolean hasPurchased(Connection conn, int personId, int itemId) {
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT 1 FROM OrderItem OI " +
+                "JOIN `Order` O ON OI.order_id = O.order_id " +
+                "WHERE O.person_id = ? AND OI.item_id = ? LIMIT 1"
+            );
+            ps.setInt(1, personId);
+            ps.setInt(2, itemId);
+            return ps.executeQuery().next();
+        } catch (SQLException ex) { System.out.println(ex.getMessage()); }
+        return false;
+    }
+
+    public static boolean hasReviewed(Connection conn, int personId, int itemId) {
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT 1 FROM Review WHERE person_id = ? AND item_id = ? LIMIT 1"
+            );
+            ps.setInt(1, personId);
+            ps.setInt(2, itemId);
+            return ps.executeQuery().next();
+        } catch (SQLException ex) { System.out.println(ex.getMessage()); }
+        return false;
     }
 
     // fetch orders for a specific customer, newest first, with each order's items

@@ -22,24 +22,46 @@ public class ItemDAO {
     }
 
     public static List<Item> getAll(Connection conn) {
-        return query(conn, null);
+        return query(conn, null, -1);
     }
 
     public static List<Item> search(Connection conn, String q) {
-        return query(conn, q);
+        return query(conn, q, -1);
     }
 
-    private static List<Item> query(Connection conn, String search) {
+    // Only items at this branch with qty > 0; includes branch-specific quantity
+    public static List<Item> getByBranch(Connection conn, int branchId, String search) {
+        return query(conn, search, branchId);
+    }
+
+    private static List<Item> query(Connection conn, String search, int branchId) {
         List<Item> list = new ArrayList<>();
         try {
-            String sql =
-                "SELECT I.item_id, I.name, I.price, I.wholesale_price, I.item_type, " +
-                "       I.image_path, I.supplier_id, S.name AS supplier_name " +
-                "FROM Item I LEFT JOIN Supplier S ON I.supplier_id = S.supplier_id";
-            if (search != null && !search.isBlank()) sql += " WHERE I.name LIKE ?";
+            String sql;
+            if (branchId >= 0) {
+                // LEFT JOIN so packages (no BI row) still appear; filter by branch qty OR package
+                sql = "SELECT I.item_id, I.name, I.price, I.wholesale_price, I.item_type, " +
+                      "       I.image_path, I.supplier_id, S.name AS supplier_name, " +
+                      "       COALESCE(BI.quantity, 0) AS branch_qty " +
+                      "FROM Item I " +
+                      "LEFT JOIN BranchInventory BI ON BI.item_id = I.item_id AND BI.branch_id = ? " +
+                      "LEFT JOIN Supplier S ON I.supplier_id = S.supplier_id " +
+                      "WHERE (BI.quantity > 0) OR EXISTS (SELECT 1 FROM Package P WHERE P.package_id = I.item_id)";
+                if (search != null && !search.isBlank()) sql += " AND I.name LIKE ?";
+            } else {
+                // show items with stock > 0 anywhere, OR packages
+                sql = "SELECT I.item_id, I.name, I.price, I.wholesale_price, I.item_type, " +
+                      "       I.image_path, I.supplier_id, S.name AS supplier_name, 0 AS branch_qty " +
+                      "FROM Item I LEFT JOIN Supplier S ON I.supplier_id = S.supplier_id " +
+                      "WHERE EXISTS (SELECT 1 FROM BranchInventory BI WHERE BI.item_id = I.item_id AND BI.quantity > 0)" +
+                      "   OR EXISTS (SELECT 1 FROM Package P WHERE P.package_id = I.item_id)";
+                if (search != null && !search.isBlank()) sql += " AND I.name LIKE ?";
+            }
 
             PreparedStatement ps = conn.prepareStatement(sql);
-            if (search != null && !search.isBlank()) ps.setString(1, "%" + search + "%");
+            int idx = 1;
+            if (branchId >= 0) ps.setInt(idx++, branchId);
+            if (search != null && !search.isBlank()) ps.setString(idx, "%" + search + "%");
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {
@@ -53,7 +75,8 @@ public class ItemDAO {
                     rs.getString("item_type"),
                     rs.getString("image_path"),
                     supId,
-                    rs.getString("supplier_name")
+                    rs.getString("supplier_name"),
+                    rs.getInt("branch_qty")
                 ));
             }
         } catch (SQLException ex) {

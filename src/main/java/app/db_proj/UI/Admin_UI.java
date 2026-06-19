@@ -3,10 +3,13 @@ package app.db_proj.UI;
 import app.db_proj.Admin_Logic;
 import app.db_proj.Labels;
 import app.db_proj.OrderDAO;
+import app.db_proj.PackageDAO;
+import app.db_proj.RoastBatchDAO;
 import app.db_proj.SystemHandling;
 import app.db_proj.model.Order;
 import app.db_proj.model.OrderItem;
 import javafx.collections.FXCollections;
+import javafx.util.Callback;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
@@ -21,6 +24,7 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.FileChooser;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Admin_UI {
@@ -29,11 +33,14 @@ public class Admin_UI {
     private VBox main_content, left_nav;
     private SystemHandling sys;
     private int adminBranchId = -1;
+    private boolean isFullAdmin;
 
     private Button[] navBtns;
+    private int[] sectionIndices;
 
     // section roots
-    private VBox branchSection, employeesSection, usersSection, itemsSection, suppliersSection, ordersSection;
+    private VBox branchSection, employeesSection, usersSection, itemsSection,
+                 suppliersSection, ordersSection, reportsSection, packagesSection, roastBatchSection;
 
     // card list containers
     private VBox branch_cards_box;
@@ -43,6 +50,8 @@ public class Admin_UI {
     private VBox item_cards_box;
     private VBox supplier_cards_box;
     private VBox order_cards_box;
+    private VBox package_cards_box;
+    private VBox roast_batch_cards_box;
 
     // branch section detail box (for admin's own branch)
     private VBox branch_detail_box;
@@ -55,7 +64,10 @@ public class Admin_UI {
         screen.setMaxHeight(Double.MAX_VALUE);
 
         if (sys.getCurrentUserId() != null) {
-            adminBranchId = Admin_Logic.getAdminBranchId(sys.getConn(), sys.getCurrentUserId());
+            isFullAdmin = sys.isUserAdmin();
+            adminBranchId = isFullAdmin
+                ? Admin_Logic.getAdminBranchId(sys.getConn(), sys.getCurrentUserId())
+                : Admin_Logic.getEmployeeBranchId(sys.getConn(), sys.getCurrentUserId());
         }
 
         make_main_content();
@@ -80,14 +92,22 @@ public class Admin_UI {
         )));
         left_nav.setMaxHeight(Double.MAX_VALUE);
 
-        Label title = new Labels("Admin Panel",
+        String panelTitle = isFullAdmin ? "Admin Panel" : "Employee Portal";
+        Label title = new Labels(panelTitle,
             Font.font("Adwaita Mono", FontWeight.BOLD, 21),
             Color.hsb(48, 1, 0.92, 1)).getLabel();
         title.setPadding(new Insets(0, 0, 10, 4));
 
         Separator sep = new Separator();
 
-        String[] names = {"Branch", "Employees", "Users", "Items", "Suppliers", "Orders"};
+        String[] names;
+        if (isFullAdmin) {
+            names = new String[]{"Branch", "Employees", "Users", "Items", "Suppliers", "Orders", "Reports", "Packages", "Roast Batches"};
+            sectionIndices = new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8};
+        } else {
+            names = new String[]{"Branch", "Employees", "Suppliers", "Orders"};
+            sectionIndices = new int[]{0, 1, 4, 5};
+        }
         navBtns = new Button[names.length];
         VBox btns = new VBox(4);
         btns.setPadding(new Insets(10, 0, 0, 0));
@@ -95,8 +115,8 @@ public class Admin_UI {
         for (int i = 0; i < names.length; i++) {
             Button b = makeNavBtn(names[i]);
             navBtns[i] = b;
-            final int idx = i;
-            b.setOnAction(e -> select_section(idx));
+            final int secIdx = sectionIndices[i];
+            b.setOnAction(e -> select_section(secIdx));
             btns.getChildren().add(b);
         }
 
@@ -125,27 +145,36 @@ public class Admin_UI {
         return btn;
     }
 
-    private void select_section(int idx) {
+    private void select_section(int sectionIdx) {
         for (Button b : navBtns) {
             b.setBackground(Background.EMPTY);
             b.setTextFill(Color.hsb(30, 0.12, 0.78, 1));
         }
-        navBtns[idx].setBackground(new Background(new BackgroundFill(
-            Color.hsb(48, 1, 0.92, 1), new CornerRadii(8), null)));
-        navBtns[idx].setTextFill(Color.BLACK);
+        for (int i = 0; i < sectionIndices.length; i++) {
+            if (sectionIndices[i] == sectionIdx) {
+                navBtns[i].setBackground(new Background(new BackgroundFill(
+                    Color.hsb(48, 1, 0.92, 1), new CornerRadii(8), null)));
+                navBtns[i].setTextFill(Color.BLACK);
+                break;
+            }
+        }
 
-        switch (idx) {
+        switch (sectionIdx) {
             case 0 -> refresh_branches();
             case 1 -> refresh_branch_employees();
             case 2 -> refresh_customers();
             case 3 -> refresh_items();
             case 4 -> refresh_suppliers();
             case 5 -> refresh_orders();
+            case 6 -> refresh_reports();
+            case 7 -> refresh_packages();
+            case 8 -> refresh_roast_batches();
         }
 
-        VBox[] sections = {branchSection, employeesSection, usersSection, itemsSection, suppliersSection, ordersSection};
-        main_content.getChildren().setAll(sections[idx]);
-        VBox.setVgrow(sections[idx], Priority.ALWAYS);
+        VBox[] sections = {branchSection, employeesSection, usersSection, itemsSection,
+                           suppliersSection, ordersSection, reportsSection, packagesSection, roastBatchSection};
+        main_content.getChildren().setAll(sections[sectionIdx]);
+        VBox.setVgrow(sections[sectionIdx], Priority.ALWAYS);
     }
 
     // ── MAIN CONTENT ─────────────────────────────────────────────────────────
@@ -162,6 +191,9 @@ public class Admin_UI {
         build_items_section();
         build_suppliers_section();
         build_orders_section();
+        build_reports_section();
+        build_packages_section();
+        build_roast_batches_section();
     }
 
     // ── BRANCH SECTION ───────────────────────────────────────────────────────
@@ -171,8 +203,9 @@ public class Admin_UI {
         branchSection.setPadding(new Insets(14, 0, 14, 14));
         VBox.setVgrow(branchSection, Priority.ALWAYS);
 
-        HBox header = sectionHeader("Branches",
-            e -> showFormOverlay(make_branch_form()));
+        HBox header = isFullAdmin
+            ? sectionHeader("Branches", e -> showFormOverlay(make_branch_form()))
+            : sectionTitleOnly("My Branch");
 
         branch_cards_box = new VBox(10);
         branch_cards_box.setPadding(new Insets(2, 0, 10, 0));
@@ -185,6 +218,17 @@ public class Admin_UI {
     private void refresh_branches() {
         if (branch_cards_box == null) return;
         branch_cards_box.getChildren().clear();
+
+        if (!isFullAdmin) {
+            if (adminBranchId == -1) {
+                branch_cards_box.getChildren().add(emptyLabel("No branch assigned"));
+                return;
+            }
+            Admin_Logic.BranchDetailRow b = Admin_Logic.getBranchDetail(sys.getConn(), adminBranchId);
+            if (b != null) branch_cards_box.getChildren().add(makeBranchCard(b));
+            return;
+        }
+
         List<Admin_Logic.BranchDetailRow> rows = Admin_Logic.getAllBranches(sys.getConn());
         if (rows.isEmpty()) {
             branch_cards_box.getChildren().add(emptyLabel("No branches found"));
@@ -318,7 +362,427 @@ public class Admin_UI {
         Label badge = badge("Branch " + b.branchId, Color.hsb(35, 0.80, 0.70, 1));
 
         card.getChildren().addAll(accent, info, badge);
+        card.setOnMouseClicked(e -> showBranchDetail(b));
         return card;
+    }
+
+    private void showBranchDetail(Admin_Logic.BranchDetailRow b) {
+        StackPane overlay = new StackPane();
+        overlay.setBackground(new Background(new BackgroundFill(
+            Color.hsb(0, 0, 0, 0.68), null, null)));
+        overlay.setOnMouseClicked(e -> {
+            if (e.getTarget() == overlay) screenRoot.getChildren().remove(overlay);
+        });
+        StackPane.setMargin(overlay, Insets.EMPTY);
+
+        VBox modal = new VBox(0);
+        modal.setMaxWidth(700);
+        modal.setBackground(new Background(new BackgroundFill(
+            Color.hsb(35, 0.20, 0.22, 1), new CornerRadii(16), null)));
+        modal.setEffect(new DropShadow(32, 0, 8, Color.hsb(0, 0, 0, 0.65)));
+        StackPane.setMargin(modal, new Insets(30));
+
+        // header
+        HBox modalHeader = new HBox();
+        modalHeader.setPadding(new Insets(14, 18, 14, 20));
+        modalHeader.setAlignment(Pos.CENTER_LEFT);
+        modalHeader.setBackground(new Background(new BackgroundFill(
+            Color.hsb(35, 0.22, 0.17, 1), new CornerRadii(16, 16, 0, 0, false), null)));
+        Label titleLbl = new Label(b.name);
+        titleLbl.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 20));
+        titleLbl.setTextFill(Color.hsb(48, 1, 0.92, 1));
+        Region hSpacer = new Region();
+        HBox.setHgrow(hSpacer, Priority.ALWAYS);
+        Button closeBtn = new Button("✕");
+        closeBtn.setFont(Font.font("Nunito", FontWeight.BOLD, 16));
+        closeBtn.setBackground(Background.EMPTY);
+        closeBtn.setTextFill(Color.hsb(30, 0.12, 0.72, 1));
+        closeBtn.setCursor(Cursor.HAND);
+        closeBtn.setOnAction(e -> screenRoot.getChildren().remove(overlay));
+        closeBtn.setOnMouseEntered(e -> closeBtn.setTextFill(Color.WHITE));
+        closeBtn.setOnMouseExited(e -> closeBtn.setTextFill(Color.hsb(30, 0.12, 0.72, 1)));
+        modalHeader.getChildren().addAll(titleLbl, hSpacer, closeBtn);
+
+        // body
+        VBox body = new VBox(12);
+        body.setPadding(new Insets(16, 18, 18, 18));
+
+        Label locLbl = new Label(b.street + ", " + b.city + "  " + b.zip);
+        locLbl.setFont(Font.font("Nunito", 14));
+        locLbl.setTextFill(Color.hsb(30, 0.12, 0.65, 1));
+        body.getChildren().add(locLbl);
+
+        // ── Roast Batches for this branch ─────────────────────────────────────
+        body.getChildren().add(new Separator());
+        HBox batchHeader = new HBox(8);
+        batchHeader.setAlignment(Pos.CENTER_LEFT);
+        Label batchHeadLbl = new Label("Roast Batches");
+        batchHeadLbl.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+        batchHeadLbl.setTextFill(Color.hsb(25, 0.75, 0.80, 1));
+        HBox.setHgrow(batchHeadLbl, Priority.ALWAYS);
+        Button addBatchBtn = new Button("+ New Batch");
+        addBatchBtn.setStyle("-fx-background-color: hsb(25, 55%, 60%); -fx-background-radius: 7;"
+            + "-fx-font-size: 12px; -fx-text-fill: white;");
+        addBatchBtn.setCursor(Cursor.HAND);
+        addBatchBtn.setOnAction(ev -> showFormOverlay(make_roast_batch_form(b.branchId)));
+        batchHeader.getChildren().addAll(batchHeadLbl, addBatchBtn);
+        body.getChildren().add(batchHeader);
+
+        List<RoastBatchDAO.RoastBatchRow> batches = RoastBatchDAO.getByBranch(sys.getConn(), b.branchId);
+        if (batches.isEmpty()) {
+            Label none = new Label("No roast batches recorded for this branch");
+            none.setFont(Font.font("Nunito", 13));
+            none.setTextFill(Color.hsb(30, 0.10, 0.55, 1));
+            body.getChildren().add(none);
+        } else {
+            for (RoastBatchDAO.RoastBatchRow rb : batches) {
+                HBox bRow = new HBox(10);
+                bRow.setAlignment(Pos.CENTER_LEFT);
+                bRow.setPadding(new Insets(8, 12, 8, 12));
+                bRow.setBackground(new Background(new BackgroundFill(
+                    Color.hsb(25, 0.18, 0.28, 1), new CornerRadii(8), null)));
+
+                VBox bInfo = new VBox(2);
+                HBox.setHgrow(bInfo, Priority.ALWAYS);
+                Label bId = new Label("Batch #" + rb.batchId + "  ·  " + rb.roastDate);
+                bId.setFont(Font.font("Nunito", FontWeight.BOLD, 13));
+                bId.setTextFill(Color.WHITE);
+                Label bDet = new Label(rb.roastLevel + "  ·  " + rb.kgGreen + " kg green → " + rb.kgRoasted + " kg roasted");
+                bDet.setFont(Font.font("Nunito", 12));
+                bDet.setTextFill(Color.hsb(30, 0.12, 0.65, 1));
+                bInfo.getChildren().addAll(bId, bDet);
+
+                Button editBatch = new Button("Edit");
+                editBatch.setStyle("-fx-background-color: hsb(35, 14%, 30%); -fx-background-radius: 6;"
+                    + "-fx-font-size: 12px; -fx-text-fill: #d4c0a0;");
+                editBatch.setCursor(Cursor.HAND);
+                editBatch.setOnAction(ev -> showFormOverlay(make_roast_batch_edit_form(rb)));
+
+                bRow.getChildren().addAll(bInfo, editBatch);
+                body.getChildren().add(bRow);
+            }
+        }
+        body.getChildren().add(new Separator());
+
+        // ── Stock ─────────────────────────────────────────────────────────────
+        List<Admin_Logic.StockRow> stock = Admin_Logic.getBranchStock(sys.getConn(), b.branchId);
+        List<Admin_Logic.StockRow> needsRefill = new ArrayList<>();
+        List<Admin_Logic.StockRow> inStock     = new ArrayList<>();
+        for (Admin_Logic.StockRow s : stock) {
+            if (s.getQuantity() == 0) needsRefill.add(s);
+            else inStock.add(s);
+        }
+
+        if (!needsRefill.isEmpty()) {
+            Label head = new Label("⚠  Needs Refill");
+            head.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+            head.setTextFill(Color.hsb(0, 0.8, 0.85, 1));
+            VBox box = new VBox(6);
+            for (Admin_Logic.StockRow s : needsRefill)
+                box.getChildren().add(makeStockRow(s, b.branchId));
+            body.getChildren().addAll(head, box);
+        }
+
+        if (!inStock.isEmpty()) {
+            Label head = new Label("In Stock");
+            head.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+            head.setTextFill(Color.hsb(120, 0.5, 0.72, 1));
+            VBox box = new VBox(6);
+            for (Admin_Logic.StockRow s : inStock)
+                box.getChildren().add(makeStockRow(s, b.branchId));
+            body.getChildren().addAll(head, box);
+        }
+
+        if (stock.isEmpty()) {
+            body.getChildren().add(emptyLabel("No items stocked at this branch yet"));
+        }
+
+        // add catalog item to branch
+        body.getChildren().add(new Separator());
+        Label addHead = new Label("Add Item to Branch");
+        addHead.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+        addHead.setTextFill(Color.hsb(30, 0.12, 0.72, 1));
+
+        ComboBox<Admin_Logic.ItemRow> itemCombo = new ComboBox<>();
+        itemCombo.setMaxWidth(Double.MAX_VALUE);
+        itemCombo.setPromptText("Select Item from Catalog");
+        itemCombo.getItems().addAll(Admin_Logic.getItemsNotAtBranch(sys.getConn(), b.branchId));
+
+        Callback<ListView<Admin_Logic.ItemRow>, ListCell<Admin_Logic.ItemRow>> cellFactory = lv -> new ListCell<>() {
+            @Override protected void updateItem(Admin_Logic.ItemRow it, boolean empty) {
+                super.updateItem(it, empty);
+                if (empty || it == null) { setText(null); }
+                else {
+                    setText("#" + it.getItemId() + "  –  " + it.getName());
+                    setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+                    setStyle("-fx-font-size: 14px; -fx-background-color: transparent;");
+                }
+            }
+        };
+        itemCombo.setCellFactory(cellFactory);
+        itemCombo.setButtonCell(new ListCell<>() {
+            @Override protected void updateItem(Admin_Logic.ItemRow it, boolean empty) {
+                super.updateItem(it, empty);
+                setText(empty || it == null ? "Select Item from Catalog"
+                    : "#" + it.getItemId() + "  –  " + it.getName());
+                setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+                setStyle("-fx-font-size: 14px; -fx-background-color: transparent;");
+            }
+        });
+
+        TextField addQty = formField("Quantity");
+        Label addErr = statusLabel("Select an item and enter a valid quantity", Color.RED);
+        Label addOk  = statusLabel("Item added to branch!", Color.hsb(120, 0.5, 0.85, 1));
+
+        Button addBtn = submitBtn("Add to Branch");
+        addBtn.setOnAction(e -> {
+            addErr.setVisible(false); addOk.setVisible(false);
+            Admin_Logic.ItemRow sel = itemCombo.getValue();
+            if (sel == null || addQty.getText().isBlank()) { addErr.setVisible(true); return; }
+            try {
+                int qty = Integer.parseInt(addQty.getText().trim());
+                if (qty <= 0) { addErr.setVisible(true); return; }
+                Admin_Logic.setStock(sys.getConn(), b.branchId, sel.getItemId(), qty);
+                addOk.setVisible(true);
+                itemCombo.getItems().remove(sel);
+                itemCombo.setValue(null);
+                addQty.clear();
+            } catch (NumberFormatException ex) { addErr.setVisible(true); }
+        });
+
+        body.getChildren().addAll(addHead, itemCombo, addQty, addErr, addOk, addBtn);
+
+        ScrollPane scroll = new ScrollPane(body);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setMaxHeight(580);
+        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+
+        modal.getChildren().addAll(modalHeader, scroll);
+        overlay.getChildren().add(modal);
+        screenRoot.getChildren().add(overlay);
+    }
+
+    private HBox makeStockRow(Admin_Logic.StockRow s, int branchId) {
+        HBox row = new HBox(10);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(8, 12, 8, 12));
+        row.setBackground(new Background(new BackgroundFill(
+            Color.hsb(35, 0.10, 0.28, 1), new CornerRadii(8), null)));
+
+        Label name = new Label(s.getItemName());
+        name.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+        name.setTextFill(Color.WHITE);
+        HBox.setHgrow(name, Priority.ALWAYS);
+
+        Color qtyColor = s.getQuantity() == 0
+            ? Color.hsb(0, 0.8, 0.85, 1) : Color.hsb(120, 0.5, 0.72, 1);
+        Label qtyBadge = badge(s.getQuantity() + " in stock", qtyColor);
+
+        TextField qtyField = new TextField(String.valueOf(s.getQuantity()));
+        qtyField.setPrefWidth(70);
+        qtyField.setFont(Font.font("Nunito", 13));
+        qtyField.setStyle("-fx-control-inner-background: hsb(35, 12%, 18%);"
+            + "-fx-text-fill: #d4c0a0; -fx-background-radius: 6; -fx-font-size: 13px;");
+
+        String setNorm = "-fx-background-color: hsb(35, 14%, 30%); -fx-background-radius: 7;"
+                       + "-fx-font-size: 13px; -fx-text-fill: #d4c0a0;";
+        String setHov  = "-fx-background-color: hsb(35, 16%, 40%); -fx-background-radius: 7;"
+                       + "-fx-font-size: 13px; -fx-text-fill: #d4c0a0;";
+        Button setBtn = new Button("Set");
+        setBtn.setStyle(setNorm); setBtn.setCursor(Cursor.HAND);
+        setBtn.setOnMouseEntered(e -> setBtn.setStyle(setHov));
+        setBtn.setOnMouseExited(e -> setBtn.setStyle(setNorm));
+        setBtn.setOnAction(ev -> {
+            try {
+                int newQty = Integer.parseInt(qtyField.getText().trim());
+                Admin_Logic.setStock(sys.getConn(), branchId, s.getItemId(), newQty);
+                qtyBadge.setText(newQty + " in stock");
+                Color c = newQty == 0 ? Color.hsb(0, 0.8, 0.85, 1) : Color.hsb(120, 0.5, 0.72, 1);
+                qtyBadge.setBackground(new Background(new BackgroundFill(c, new CornerRadii(8), null)));
+            } catch (NumberFormatException ignored) {}
+        });
+
+        row.getChildren().addAll(name, qtyBadge, qtyField, setBtn);
+        return row;
+    }
+
+    // ── ROAST BATCHES SECTION ────────────────────────────────────────────────
+
+    private void build_roast_batches_section() {
+        roastBatchSection = new VBox(12);
+        roastBatchSection.setPadding(new Insets(14, 0, 14, 14));
+        VBox.setVgrow(roastBatchSection, Priority.ALWAYS);
+
+        HBox header = sectionHeader("Roast Batches", e -> showFormOverlay(make_roast_batch_form(-1)));
+
+        roast_batch_cards_box = new VBox(10);
+        roast_batch_cards_box.setPadding(new Insets(2, 0, 10, 0));
+
+        ScrollPane scroll = cardScroll(roast_batch_cards_box);
+        roastBatchSection.getChildren().addAll(header, scroll);
+    }
+
+    private void refresh_roast_batches() {
+        if (roast_batch_cards_box == null) return;
+        roast_batch_cards_box.getChildren().clear();
+        List<RoastBatchDAO.RoastBatchRow> rows = RoastBatchDAO.getAll(sys.getConn());
+        if (rows.isEmpty()) {
+            roast_batch_cards_box.getChildren().add(emptyLabel("No roast batches yet"));
+            return;
+        }
+        for (RoastBatchDAO.RoastBatchRow row : rows)
+            roast_batch_cards_box.getChildren().add(makeRoastBatchCard(row));
+    }
+
+    private HBox makeRoastBatchCard(RoastBatchDAO.RoastBatchRow row) {
+        HBox card = baseCard();
+
+        Region accent = accentBar(Color.hsb(25, 0.75, 0.65, 1));
+
+        VBox info = new VBox(5);
+        HBox.setHgrow(info, Priority.ALWAYS);
+
+        Label batchLbl = cardTitle("Batch #" + row.batchId + "  –  " + row.branchName);
+        Label details  = cardSub(row.roastDate + "  ·  " + row.roastLevel
+            + "  ·  " + row.kgGreen + " kg green → " + row.kgRoasted + " kg roasted");
+        info.getChildren().addAll(batchLbl, details);
+
+        Button editBtn = new Button("Edit");
+        editBtn.setStyle("-fx-background-color: hsb(35, 14%, 30%); -fx-background-radius: 7;"
+            + "-fx-font-size: 13px; -fx-text-fill: #d4c0a0;");
+        editBtn.setCursor(Cursor.HAND);
+        editBtn.setOnMouseEntered(e -> editBtn.setStyle("-fx-background-color: hsb(35, 16%, 40%);"
+            + "-fx-background-radius: 7; -fx-font-size: 13px; -fx-text-fill: #d4c0a0;"));
+        editBtn.setOnMouseExited(e -> editBtn.setStyle("-fx-background-color: hsb(35, 14%, 30%);"
+            + "-fx-background-radius: 7; -fx-font-size: 13px; -fx-text-fill: #d4c0a0;"));
+        editBtn.setOnAction(e -> showFormOverlay(make_roast_batch_edit_form(row)));
+
+        card.getChildren().addAll(accent, info, editBtn);
+        return card;
+    }
+
+    private VBox make_roast_batch_form(int forcedBranchId) {
+        VBox form = formShell();
+
+        Label title   = formTitle(forcedBranchId > 0 ? "New Roast Batch" : "Add Roast Batch");
+        Label ok_msg  = statusLabel("Batch added!", Color.hsb(120, 0.5, 0.85, 1));
+        Label err_msg = statusLabel("Fill all fields with valid values", Color.RED);
+
+        // Branch selector (only shown for full admin adding from the global section)
+        ComboBox<Admin_Logic.BranchRow> branchSel = new ComboBox<>();
+        if (forcedBranchId < 0 && isFullAdmin) {
+            branchSel.setMaxWidth(Double.MAX_VALUE);
+            branchSel.setPromptText("Select Branch");
+            branchSel.getItems().addAll(Admin_Logic.getBranches(sys.getConn()));
+            branchSel.setBackground(new Background(new BackgroundFill(
+                Color.hsb(35, 0.12, 0.20, 1), new CornerRadii(7), null)));
+            branchSel.setPrefHeight(36);
+        }
+
+        TextField dateField      = formField("Roast Date (YYYY-MM-DD)");
+        TextField kgGreenField   = formField("Kg Green (e.g. 50.0)");
+        TextField kgRoastedField = formField("Kg Roasted (e.g. 42.5)");
+
+        ComboBox<String> levelCombo = roastLevelCombo(null);
+
+        Button submit = submitBtn("Add Batch");
+        submit.setOnAction(e -> {
+            ok_msg.setVisible(false); err_msg.setVisible(false);
+            int targetBranch = forcedBranchId > 0 ? forcedBranchId
+                : (branchSel.getValue() != null ? branchSel.getValue().branchId : -1);
+            if (targetBranch < 0 || levelCombo.getValue() == null) { err_msg.setVisible(true); return; }
+            int id = RoastBatchDAO.addBatch(sys.getConn(), targetBranch,
+                dateField.getText(), kgGreenField.getText(), kgRoastedField.getText(), levelCombo.getValue());
+            if (id > 0) {
+                ok_msg.setVisible(true);
+                dateField.clear(); kgGreenField.clear(); kgRoastedField.clear();
+                levelCombo.setValue(null);
+                if (forcedBranchId < 0) refresh_roast_batches();
+            } else err_msg.setVisible(true);
+        });
+
+        form.getChildren().addAll(title, ok_msg, err_msg);
+        if (forcedBranchId < 0 && isFullAdmin) form.getChildren().add(branchSel);
+        form.getChildren().addAll(dateField, kgGreenField, kgRoastedField, levelCombo, submit);
+        return form;
+    }
+
+    private VBox make_roast_batch_edit_form(RoastBatchDAO.RoastBatchRow row) {
+        VBox form = formShell();
+
+        Label title   = formTitle("Edit Batch #" + row.batchId);
+        Label ok_msg  = statusLabel("Saved!", Color.hsb(120, 0.5, 0.85, 1));
+        Label err_msg = statusLabel("Fill all fields with valid values", Color.RED);
+
+        TextField dateField      = formField("Roast Date (YYYY-MM-DD)");
+        TextField kgGreenField   = formField("Kg Green");
+        TextField kgRoastedField = formField("Kg Roasted");
+
+        dateField.setText(row.roastDate != null ? row.roastDate : "");
+        kgGreenField.setText(String.valueOf(row.kgGreen));
+        kgRoastedField.setText(String.valueOf(row.kgRoasted));
+
+        ComboBox<String> levelCombo = roastLevelCombo(row.roastLevel);
+
+        Button save = submitBtn("Save Changes");
+        save.setOnAction(e -> {
+            ok_msg.setVisible(false); err_msg.setVisible(false);
+            if (levelCombo.getValue() == null) { err_msg.setVisible(true); return; }
+            boolean ok = RoastBatchDAO.updateBatch(sys.getConn(), row.batchId,
+                dateField.getText(), kgGreenField.getText(), kgRoastedField.getText(), levelCombo.getValue());
+            if (ok) { ok_msg.setVisible(true); refresh_roast_batches(); }
+            else err_msg.setVisible(true);
+        });
+
+        form.getChildren().addAll(title, ok_msg, err_msg, dateField, kgGreenField, kgRoastedField, levelCombo, save);
+        return form;
+    }
+
+    // ── ITEM TYPE / ROAST LEVEL COMBOS ───────────────────────────────────────
+
+    private ComboBox<String> itemTypeCombo(String preselect) {
+        ComboBox<String> cb = new ComboBox<>();
+        cb.getItems().addAll(RoastBatchDAO.ITEM_TYPES);
+        cb.setPromptText("Item Type");
+        cb.setMaxWidth(Double.MAX_VALUE);
+        cb.setPrefHeight(36);
+        cb.setStyle("-fx-background-color: hsb(35, 12%, 20%); -fx-background-radius: 7;"
+            + "-fx-font-size: 14px; -fx-text-fill: #d4c0a0;");
+        cb.setButtonCell(new ListCell<>() {
+            @Override protected void updateItem(String s, boolean empty) {
+                super.updateItem(s, empty);
+                setText(empty || s == null ? "Item Type" : s);
+                setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+                setStyle("-fx-font-size: 14px; -fx-background-color: transparent;");
+            }
+        });
+        if (preselect != null) {
+            for (String t : RoastBatchDAO.ITEM_TYPES) {
+                if (t.equalsIgnoreCase(preselect)) { cb.setValue(t); break; }
+            }
+        }
+        return cb;
+    }
+
+    private ComboBox<String> roastLevelCombo(String preselect) {
+        ComboBox<String> cb = new ComboBox<>();
+        cb.getItems().addAll(RoastBatchDAO.ROAST_LEVELS);
+        cb.setPromptText("Roast Level");
+        cb.setMaxWidth(Double.MAX_VALUE);
+        cb.setPrefHeight(36);
+        cb.setStyle("-fx-background-color: hsb(35, 12%, 20%); -fx-background-radius: 7;"
+            + "-fx-font-size: 14px; -fx-text-fill: #d4c0a0;");
+        cb.setButtonCell(new ListCell<>() {
+            @Override protected void updateItem(String s, boolean empty) {
+                super.updateItem(s, empty);
+                setText(empty || s == null ? "Roast Level" : s);
+                setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+                setStyle("-fx-font-size: 14px; -fx-background-color: transparent;");
+            }
+        });
+        if (preselect != null) cb.setValue(preselect);
+        return cb;
     }
 
     private HBox makeEmployeeCard(Admin_Logic.EmployeeRow row) {
@@ -390,21 +854,138 @@ public class Admin_UI {
             } catch (Exception ignored) {}
         }
 
-        VBox info = new VBox(5);
+        VBox info = new VBox(4);
         HBox.setHgrow(info, Priority.ALWAYS);
 
         Label name  = cardTitle(row.getName());
+
+        HBox priceRow = new HBox(12);
+        priceRow.setAlignment(Pos.CENTER_LEFT);
         Label price = new Label(String.format("₪ %.2f", row.getPrice()));
         price.setFont(Font.font("Nunito", FontWeight.BOLD, 15));
         price.setTextFill(Color.hsb(48, 1, 0.92, 1));
 
-        info.getChildren().addAll(name, price);
+        // Stock at admin's branch
+        int branchStock = adminBranchId >= 0
+            ? Admin_Logic.getTotalStock(sys.getConn(), row.getItemId()) : -1;
+        Label stockLbl = new Label(branchStock >= 0 ? "Stock: " + branchStock : "");
+        stockLbl.setFont(Font.font("Nunito", 13));
+        stockLbl.setTextFill(branchStock > 0
+            ? Color.hsb(120, 0.5, 0.70, 1) : Color.hsb(0, 0.65, 0.72, 1));
 
-        Label typeBadge = badge(row.getItemType(), Color.hsb(120, 0.50, 0.72, 1));
+        priceRow.getChildren().addAll(price, stockLbl);
+        info.getChildren().addAll(name, priceRow);
+
+        Label typeBadge = badge(row.getItemType() != null ? row.getItemType() : "—",
+                                Color.hsb(120, 0.50, 0.72, 1));
         typeBadge.setTextFill(Color.BLACK);
 
+        // Supplier sub-label
+        if (row.getSupplierName() != null) {
+            Label sup = cardSub("by " + row.getSupplierName());
+            info.getChildren().add(sup);
+        }
+
+        card.setOnMouseClicked(e -> showFormOverlay(make_item_edit_form(row)));
         card.getChildren().addAll(accent, info, typeBadge);
         return card;
+    }
+
+    private VBox make_item_edit_form(Admin_Logic.ItemRow row) {
+        VBox form = formShell();
+
+        Label title      = formTitle("Edit Item  #" + row.getItemId());
+        Label warn_empty = statusLabel("Name and price are required", Color.RED);
+        Label warn_price = statusLabel("Price must be a number", Color.RED);
+        Label ok_msg     = statusLabel("Saved!", Color.hsb(120, 0.5, 0.85, 1));
+        Label err_msg    = statusLabel("An error occurred", Color.RED);
+
+        TextField nameField      = formField("Item Name");
+        TextField priceField     = formField("Price");
+        TextField wholesaleField = formField("Wholesale Price");
+        ComboBox<String> typeField = itemTypeCombo(row.getItemType());
+
+        nameField.setText(row.getName() != null ? row.getName() : "");
+        priceField.setText(String.valueOf(row.getPrice()));
+
+        // Image chooser
+        String btnNormal = "-fx-background-color: hsb(35, 14%, 30%); -fx-background-radius: 7; -fx-font-size: 13px; -fx-text-fill: #d4c0a0;";
+        String btnHover  = "-fx-background-color: hsb(35, 16%, 38%); -fx-background-radius: 7; -fx-font-size: 13px; -fx-text-fill: #d4c0a0;";
+        Button chooserBtn = new Button("Change Image");
+        chooserBtn.setStyle(btnNormal);
+        chooserBtn.setCursor(Cursor.HAND);
+        chooserBtn.setMaxWidth(Double.MAX_VALUE);
+        chooserBtn.setOnMouseEntered(e -> chooserBtn.setStyle(btnHover));
+        chooserBtn.setOnMouseExited(e -> chooserBtn.setStyle(btnNormal));
+
+        Label imageLbl = new Label(row.getImagePath() != null ? new File(row.getImagePath()).getName() : "No image");
+        imageLbl.setFont(Font.font("Nunito", 13));
+        imageLbl.setTextFill(Color.hsb(30, 0.10, 0.55, 1));
+
+        ImageView preview = new ImageView();
+        preview.setFitWidth(72); preview.setFitHeight(72);
+        preview.setPreserveRatio(true);
+        if (row.getImagePath() != null) {
+            try { preview.setImage(new Image(new File(row.getImagePath()).toURI().toString())); } catch (Exception ignored) {}
+        }
+
+        String[] imagePath = {row.getImagePath()};
+        chooserBtn.setOnAction(ev -> {
+            FileChooser fc = new FileChooser();
+            fc.setTitle("Select Item Image");
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Images", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp"));
+            File f = fc.showOpenDialog(chooserBtn.getScene().getWindow());
+            if (f != null) {
+                imagePath[0] = f.getAbsolutePath();
+                imageLbl.setText(f.getName());
+                preview.setImage(new Image(f.toURI().toString()));
+            }
+        });
+
+        // Stock at this admin's branch
+        Separator stockSep = new Separator();
+        Label stockHead = new Label("Stock at your branch");
+        stockHead.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+        stockHead.setTextFill(Color.hsb(30, 0.12, 0.72, 1));
+
+        int currentStock = adminBranchId >= 0
+            ? Admin_Logic.getTotalStock(sys.getConn(), row.getItemId()) : 0;
+        TextField stockField = formField("Quantity");
+        stockField.setText(String.valueOf(currentStock));
+
+        Button saveBtn = submitBtn("Save Changes");
+        saveBtn.setOnAction(e -> {
+            warn_empty.setVisible(false); warn_price.setVisible(false);
+            ok_msg.setVisible(false); err_msg.setVisible(false);
+
+            String res = Admin_Logic.updateItem(sys.getConn(), row.getItemId(),
+                nameField.getText(), priceField.getText(), wholesaleField.getText(),
+                typeField.getValue() != null ? typeField.getValue() : "", imagePath[0]);
+
+            if (res.equals("empty"))       { warn_empty.setVisible(true); return; }
+            if (res.equals("price_error")) { warn_price.setVisible(true); return; }
+            if (!res.equals("ok"))         { err_msg.setVisible(true); return; }
+
+            // update branch stock if admin has a branch
+            if (adminBranchId >= 0 && !stockField.getText().isBlank()) {
+                try {
+                    int qty = Integer.parseInt(stockField.getText().trim());
+                    Admin_Logic.setStock(sys.getConn(), adminBranchId, row.getItemId(), qty);
+                } catch (NumberFormatException ignored) {}
+            }
+
+            ok_msg.setVisible(true);
+            refresh_items();
+        });
+
+        form.getChildren().addAll(
+            title, warn_empty, warn_price, ok_msg, err_msg,
+            nameField, priceField, wholesaleField, typeField,
+            chooserBtn, imageLbl, preview,
+            stockSep, stockHead, stockField,
+            saveBtn
+        );
+        return form;
     }
 
     // ── CARD PRIMITIVES ──────────────────────────────────────────────────────
@@ -462,6 +1043,16 @@ public class Admin_UI {
     }
 
     // ── SECTION HELPERS ──────────────────────────────────────────────────────
+
+    private HBox sectionTitleOnly(String titleText) {
+        HBox header = new HBox(12);
+        header.setAlignment(Pos.CENTER_LEFT);
+        Label lbl = new Labels(titleText,
+            Font.font("Adwaita Mono", FontWeight.BOLD, 28),
+            Color.hsb(48, 1, 0.92, 1)).getLabel();
+        header.getChildren().add(lbl);
+        return header;
+    }
 
     private HBox sectionHeader(String titleText, javafx.event.EventHandler<javafx.event.ActionEvent> addAction) {
         HBox header = new HBox(12);
@@ -780,9 +1371,10 @@ public class Admin_UI {
         Label ok_msg     = statusLabel("Item added!", Color.hsb(120, 0.5, 0.85, 1));
         Label err_msg    = statusLabel("An error occurred", Color.RED);
 
-        TextField name      = formField("Item Name");
-        TextField price     = formField("Price (e.g. 12.50)");
-        TextField item_type = formField("Type (e.g. Food, Craft)");
+        TextField name       = formField("Item Name");
+        TextField price      = formField("Price (e.g. 12.50)");
+        ComboBox<String> item_type = itemTypeCombo(null);
+        TextField stockField = formField("Quantity at your branch (optional)");
 
         // image chooser row
         String btnNormal = "-fx-background-color: hsb(35, 14%, 30%); -fx-background-radius: 7; -fx-font-size: 13px; -fx-text-fill: #d4c0a0;";
@@ -828,14 +1420,20 @@ public class Admin_UI {
             ok_msg.setVisible(false);
             err_msg.setVisible(false);
 
-            String result = Admin_Logic.addItem(
-                sys.getConn(), name.getText(), price.getText(), item_type.getText(), imagePath[0]);
+            int newId = Admin_Logic.addItem(
+                sys.getConn(), name.getText(), price.getText(),
+                item_type.getValue() != null ? item_type.getValue() : "", imagePath[0]);
 
-            if (result.equals("empty"))            warn_empty.setVisible(true);
-            else if (result.equals("price_error")) warn_price.setVisible(true);
-            else if (result.equals("ok")) {
+            if (newId == -1)      warn_empty.setVisible(true);
+            else if (newId == -2) warn_price.setVisible(true);
+            else if (newId > 0) {
+                String stockText = stockField.getText().trim();
+                if (!stockText.isBlank() && adminBranchId > 0) {
+                    try { Admin_Logic.setStock(sys.getConn(), adminBranchId, newId, Integer.parseInt(stockText)); }
+                    catch (NumberFormatException ignored) {}
+                }
                 ok_msg.setVisible(true);
-                name.clear(); price.clear(); item_type.clear();
+                name.clear(); price.clear(); item_type.setValue(null); stockField.clear();
                 imagePath[0] = null;
                 imageLbl.setText("No image selected");
                 preview.setImage(null);
@@ -846,7 +1444,7 @@ public class Admin_UI {
         });
 
         form.getChildren().addAll(title, warn_empty, warn_price, ok_msg, err_msg,
-            name, price, item_type, chooserBtn, imageLbl, preview, submit);
+            name, price, item_type, stockField, chooserBtn, imageLbl, preview, submit);
         return form;
     }
 
@@ -1165,6 +1763,295 @@ public class Admin_UI {
             case "cancelled"  -> Color.hsb(0, 0.70, 0.72, 1);
             default           -> Color.hsb(0, 0, 0.55, 1);
         };
+    }
+
+    // ── REPORTS SECTION ──────────────────────────────────────────────────────
+
+    private void build_reports_section() {
+        reportsSection = new VBox();
+        VBox.setVgrow(reportsSection, Priority.ALWAYS);
+    }
+
+    private void refresh_reports() {
+        reportsSection.getChildren().setAll(ReportsUI.build(sys));
+        VBox.setVgrow(reportsSection.getChildren().get(0), Priority.ALWAYS);
+    }
+
+    // ── PACKAGES SECTION ─────────────────────────────────────────────────────
+
+    private void build_packages_section() {
+        packagesSection = new VBox(12);
+        packagesSection.setPadding(new Insets(14, 0, 14, 14));
+        VBox.setVgrow(packagesSection, Priority.ALWAYS);
+
+        HBox header = sectionHeader("Packages", e -> showFormOverlay(make_package_form()));
+
+        package_cards_box = new VBox(10);
+        package_cards_box.setPadding(new Insets(2, 0, 10, 0));
+
+        packagesSection.getChildren().addAll(header, cardScroll(package_cards_box));
+    }
+
+    private void refresh_packages() {
+        if (package_cards_box == null) return;
+        package_cards_box.getChildren().clear();
+        List<PackageDAO.PackageRow> rows = PackageDAO.getAll(sys.getConn());
+        if (rows.isEmpty()) {
+            package_cards_box.getChildren().add(emptyLabel("No packages yet"));
+            return;
+        }
+        for (PackageDAO.PackageRow row : rows)
+            package_cards_box.getChildren().add(makePackageCard(row));
+    }
+
+    private HBox makePackageCard(PackageDAO.PackageRow row) {
+        HBox card = baseCard();
+        Region accent = accentBar(Color.hsb(270, 0.55, 0.80, 1));
+
+        VBox info = new VBox(5);
+        HBox.setHgrow(info, Priority.ALWAYS);
+
+        Label name = cardTitle(row.name);
+        String contentsStr = row.contents.isEmpty() ? "Empty package"
+            : row.contents.stream().map(c -> c.itemName + " ×" + c.quantity)
+                          .reduce((a, b) -> a + ", " + b).orElse("");
+        Label contents = cardSub(contentsStr);
+        if (row.description != null && !row.description.isBlank())
+            contents = cardSub(row.description + "  |  " + contentsStr);
+
+        info.getChildren().addAll(name, contents);
+
+        Label priceBadge = badge(String.format("₪ %.2f", row.price), Color.hsb(270, 0.55, 0.80, 1));
+
+        card.setOnMouseClicked(e -> showPackageDetail(row));
+        card.getChildren().addAll(accent, info, priceBadge);
+        return card;
+    }
+
+    private void showPackageDetail(PackageDAO.PackageRow row) {
+        VBox content = new VBox(10);
+        content.setPadding(new Insets(14));
+
+        Label title = formTitle("Package: " + row.name);
+        if (row.description != null && !row.description.isBlank()) {
+            Label desc = new Label(row.description);
+            desc.setFont(Font.font("Nunito", 14));
+            desc.setTextFill(Color.hsb(30, 0.12, 0.65, 1));
+            desc.setWrapText(true);
+            content.getChildren().addAll(title, desc);
+        } else {
+            content.getChildren().add(title);
+        }
+
+        Label priceLabel = new Label(String.format("Price:  ₪ %.2f", row.price));
+        priceLabel.setFont(Font.font("Nunito", FontWeight.BOLD, 15));
+        priceLabel.setTextFill(Color.hsb(48, 1, 0.92, 1));
+        content.getChildren().add(priceLabel);
+
+        content.getChildren().add(new Separator());
+
+        Label itemsHead = new Label("Included Items");
+        itemsHead.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 14));
+        itemsHead.setTextFill(Color.hsb(30, 0.12, 0.72, 1));
+        content.getChildren().add(itemsHead);
+
+        if (row.contents.isEmpty()) {
+            content.getChildren().add(emptyLabel("No items in this package yet"));
+        } else {
+            for (PackageDAO.PackageItemRow item : row.contents) {
+                HBox row2 = new HBox(10);
+                row2.setAlignment(Pos.CENTER_LEFT);
+                row2.setPadding(new Insets(8, 12, 8, 12));
+                row2.setBackground(new Background(new BackgroundFill(
+                    Color.hsb(35, 0.10, 0.28, 1), new CornerRadii(8), null)));
+                Label n = new Label(item.itemName);
+                n.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+                n.setTextFill(Color.WHITE);
+                HBox.setHgrow(n, Priority.ALWAYS);
+                Label q = new Label("×" + item.quantity);
+                q.setTextFill(Color.hsb(48, 1, 0.92, 1));
+                q.setFont(Font.font("Nunito", 14));
+                Label p = new Label(String.format("₪ %.2f ea", item.unitPrice));
+                p.setTextFill(Color.hsb(30, 0.12, 0.72, 1));
+                p.setFont(Font.font("Nunito", 14));
+                row2.getChildren().addAll(n, q, p);
+                content.getChildren().add(row2);
+            }
+        }
+
+        // Add item to package sub-form
+        content.getChildren().add(new Separator());
+        Label addHead = new Label("Add Item to Package");
+        addHead.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+        addHead.setTextFill(Color.hsb(30, 0.12, 0.72, 1));
+
+        ComboBox<Admin_Logic.ItemRow> itemCombo = new ComboBox<>();
+        itemCombo.setMaxWidth(Double.MAX_VALUE);
+        itemCombo.setPromptText("Select Item");
+        itemCombo.getItems().addAll(Admin_Logic.getItems(sys.getConn()));
+
+        // Show "#ID – Name" in both the button cell and the drop-down cells
+        Callback<ListView<Admin_Logic.ItemRow>, ListCell<Admin_Logic.ItemRow>> cellFactory = lv -> new ListCell<>() {
+            @Override protected void updateItem(Admin_Logic.ItemRow it, boolean empty) {
+                super.updateItem(it, empty);
+                if (empty || it == null) { setText(null); }
+                else {
+                    setText("#" + it.getItemId() + "  –  " + it.getName());
+                    setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+                    setStyle("-fx-font-size: 14px; -fx-background-color: transparent;");
+                }
+            }
+        };
+        itemCombo.setCellFactory(cellFactory);
+        itemCombo.setButtonCell(new ListCell<>() {
+            @Override protected void updateItem(Admin_Logic.ItemRow it, boolean empty) {
+                super.updateItem(it, empty);
+                setText(empty || it == null ? "Select Item" : "#" + it.getItemId() + "  –  " + it.getName());
+                setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+                setStyle("-fx-font-size: 14px; -fx-background-color: transparent;");
+            }
+        });
+
+        TextField qtyField = formField("Quantity");
+        Label addFeedback = statusLabel("Item added!", Color.hsb(120, 0.5, 0.85, 1));
+        Label addErr = statusLabel("Select an item and enter a valid quantity", Color.RED);
+
+        Button addBtn = submitBtn("Add Item");
+        addBtn.setOnAction(e -> {
+            addFeedback.setVisible(false); addErr.setVisible(false);
+            Admin_Logic.ItemRow sel = itemCombo.getValue();
+            if (sel == null || qtyField.getText().isBlank()) { addErr.setVisible(true); return; }
+            try {
+                int qty = Integer.parseInt(qtyField.getText().trim());
+                boolean ok = PackageDAO.addItemToPackage(sys.getConn(), row.packageId, sel.getItemId(), qty);
+                if (ok) { addFeedback.setVisible(true); qtyField.clear(); refresh_packages(); }
+                else addErr.setVisible(true);
+            } catch (NumberFormatException ex) { addErr.setVisible(true); }
+        });
+
+        content.getChildren().addAll(addHead, itemCombo, qtyField, addErr, addFeedback, addBtn);
+        showFormOverlay(content);
+    }
+
+    private VBox make_package_form() {
+        VBox form = formShell();
+
+        Label title      = formTitle("Create Package");
+        Label warn_empty = statusLabel("Name and price are required", Color.RED);
+        Label warn_price = statusLabel("Price must be a number", Color.RED);
+        Label ok_msg     = statusLabel("Package created!", Color.hsb(120, 0.5, 0.85, 1));
+        Label err_msg    = statusLabel("An error occurred", Color.RED);
+
+        TextField nameField  = formField("Package Name");
+        TextField priceField = formField("Price (e.g. 45.00)");
+        TextField descField  = formField("Description (optional)");
+
+        Separator sep = new Separator();
+
+        Label itemsHead = new Label("Items to Include");
+        itemsHead.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+        itemsHead.setTextFill(Color.hsb(30, 0.12, 0.72, 1));
+
+        ComboBox<Admin_Logic.ItemRow> itemCombo = new ComboBox<>();
+        itemCombo.setMaxWidth(Double.MAX_VALUE);
+        itemCombo.setPromptText("Select Item");
+        itemCombo.getItems().addAll(Admin_Logic.getItems(sys.getConn()));
+
+        Callback<ListView<Admin_Logic.ItemRow>, ListCell<Admin_Logic.ItemRow>> cellFactory = lv -> new ListCell<>() {
+            @Override protected void updateItem(Admin_Logic.ItemRow it, boolean empty) {
+                super.updateItem(it, empty);
+                if (empty || it == null) { setText(null); }
+                else {
+                    setText("#" + it.getItemId() + "  –  " + it.getName());
+                    setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+                    setStyle("-fx-font-size: 14px; -fx-background-color: transparent;");
+                }
+            }
+        };
+        itemCombo.setCellFactory(cellFactory);
+        itemCombo.setButtonCell(new ListCell<>() {
+            @Override protected void updateItem(Admin_Logic.ItemRow it, boolean empty) {
+                super.updateItem(it, empty);
+                setText(empty || it == null ? "Select Item" : "#" + it.getItemId() + "  –  " + it.getName());
+                setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+                setStyle("-fx-font-size: 14px; -fx-background-color: transparent;");
+            }
+        });
+
+        TextField qtyField = formField("Quantity");
+        Label addErr = statusLabel("Select an item and enter a valid quantity", Color.RED);
+
+        List<int[]> pendingItems = new ArrayList<>();
+        VBox pendingBox = new VBox(4);
+
+        String secBtnNormal = "-fx-background-color: hsb(35, 14%, 30%); -fx-background-radius: 7; -fx-font-size: 13px; -fx-text-fill: #d4c0a0;";
+        String secBtnHover  = "-fx-background-color: hsb(35, 16%, 38%); -fx-background-radius: 7; -fx-font-size: 13px; -fx-text-fill: #d4c0a0;";
+        Button addItemBtn = new Button("+ Add Item to List");
+        addItemBtn.setMaxWidth(Double.MAX_VALUE);
+        addItemBtn.setStyle(secBtnNormal);
+        addItemBtn.setCursor(Cursor.HAND);
+        addItemBtn.setOnMouseEntered(ev -> addItemBtn.setStyle(secBtnHover));
+        addItemBtn.setOnMouseExited(ev -> addItemBtn.setStyle(secBtnNormal));
+        addItemBtn.setOnAction(e -> {
+            addErr.setVisible(false);
+            Admin_Logic.ItemRow sel = itemCombo.getValue();
+            if (sel == null || qtyField.getText().isBlank()) { addErr.setVisible(true); return; }
+            try {
+                int qty = Integer.parseInt(qtyField.getText().trim());
+                if (qty <= 0) { addErr.setVisible(true); return; }
+                pendingItems.add(new int[]{sel.getItemId(), qty});
+                HBox row2 = new HBox(10);
+                row2.setAlignment(Pos.CENTER_LEFT);
+                row2.setPadding(new Insets(6, 10, 6, 10));
+                row2.setBackground(new Background(new BackgroundFill(
+                    Color.hsb(35, 0.10, 0.28, 1), new CornerRadii(8), null)));
+                Label n = new Label("#" + sel.getItemId() + "  –  " + sel.getName());
+                n.setFont(Font.font("Nunito", 13));
+                n.setTextFill(Color.WHITE);
+                HBox.setHgrow(n, Priority.ALWAYS);
+                Label q = new Label("×" + qty);
+                q.setTextFill(Color.hsb(48, 1, 0.92, 1));
+                q.setFont(Font.font("Nunito", 13));
+                row2.getChildren().addAll(n, q);
+                pendingBox.getChildren().add(row2);
+                itemCombo.setValue(null);
+                qtyField.clear();
+            } catch (NumberFormatException ex) { addErr.setVisible(true); }
+        });
+
+        Button submit = submitBtn("Create Package");
+        submit.setOnAction(e -> {
+            warn_empty.setVisible(false); warn_price.setVisible(false);
+            ok_msg.setVisible(false); err_msg.setVisible(false);
+
+            int pkgId = PackageDAO.createPackage(
+                sys.getConn(), nameField.getText(), descField.getText(), priceField.getText());
+
+            if (pkgId == -2) { warn_price.setVisible(true); return; }
+            if (pkgId <= 0) {
+                if (nameField.getText().isBlank() || priceField.getText().isBlank())
+                    warn_empty.setVisible(true);
+                else
+                    err_msg.setVisible(true);
+                return;
+            }
+
+            for (int[] pair : pendingItems)
+                PackageDAO.addItemToPackage(sys.getConn(), pkgId, pair[0], pair[1]);
+
+            ok_msg.setVisible(true);
+            nameField.clear(); priceField.clear(); descField.clear();
+            pendingItems.clear();
+            pendingBox.getChildren().clear();
+            itemCombo.setValue(null);
+            refresh_packages();
+        });
+
+        form.getChildren().addAll(title, warn_empty, warn_price, ok_msg, err_msg,
+            nameField, priceField, descField,
+            sep, itemsHead, itemCombo, qtyField, addErr, addItemBtn, pendingBox,
+            submit);
+        return form;
     }
 
     // ── SHARED HELPERS ───────────────────────────────────────────────────────

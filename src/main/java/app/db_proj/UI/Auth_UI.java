@@ -107,7 +107,7 @@ public class Auth_UI {
             else if (result.equals("not_found")) warn_wrong.setVisible(true);
             else if (result.equals("ok")) {
                 // admins go straight to the admin page, regular users go home
-                if (sys.isUserAdmin()) sys.changePage(Page.ADMIN);
+                if (sys.canAccessPanel()) sys.changePage(Page.ADMIN);
                 else sys.changePage(Page.HOME);
             }
         });

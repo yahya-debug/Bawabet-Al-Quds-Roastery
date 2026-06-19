@@ -34,6 +34,8 @@ public class SystemHandling {
     private String currentUserName;
     private String currentUserEmail;
     private boolean userIsAdmin;
+    private boolean userIsEmployee;
+    private int selectedBranchId = -1; // -1 = All branches
 
 
 
@@ -49,11 +51,10 @@ public class SystemHandling {
         home_page = new Home_UI(this);
         cart_page = new CartUI(this);
 
-        // create Cart table if it doesn't exist yet
         Cart_Logic.ensureCartTable(conn);
-        // add image_path column to Item and create Supplier table if needed
         Admin_Logic.ensureItemImageColumn(conn);
         Admin_Logic.ensureSupplierTable(conn);
+        RoastBatchDAO.ensureTables(conn);
 
         // wire the nav-bar search to the home page item filter
         Top.setSearchAction(q -> home_page.search(q));
@@ -69,7 +70,7 @@ public class SystemHandling {
         switch (page) {
             case Login -> root.setCenter(auth_page.changePage(true).getUI());
             case SignUp -> root.setCenter(auth_page.changePage(false).getUI());
-            case HOME -> root.setCenter(home_page.getSP());
+            case HOME -> { home_page.refresh(); root.setCenter(home_page.getSP()); }
             case CART -> {
                 cart_page.refresh();
                 root.setCenter(cart_page.getScreen());
@@ -151,11 +152,20 @@ public class SystemHandling {
         this.authenticated = true;
         System.out.println(Profile_Logic.isAdmin(conn, id));
         this.userIsAdmin = Profile_Logic.isAdmin(conn, id);
+        this.userIsEmployee = Admin_Logic.getEmployeeBranchId(conn, id) != -1;
         if (Top != null) Top.refreshAuth();
     }
 
     public boolean isUserAdmin() {
         return userIsAdmin;
+    }
+
+    public boolean isUserEmployee() {
+        return userIsEmployee;
+    }
+
+    public boolean canAccessPanel() {
+        return userIsAdmin || userIsEmployee;
     }
 
     public void logout() {
@@ -164,6 +174,7 @@ public class SystemHandling {
         currentUserName = null;
         currentUserEmail = null;
         userIsAdmin = false;
+        userIsEmployee = false;
         admin_page = null;
         hideProf();
         Top.getLeft().getChildren().removeIf(n -> n instanceof Label);
@@ -181,6 +192,14 @@ public class SystemHandling {
 
     public String getCurrentUserEmail() {
         return currentUserEmail;
+    }
+
+    public int getSelectedBranchId() {
+        return selectedBranchId;
+    }
+
+    public void setSelectedBranchId(int id) {
+        this.selectedBranchId = id;
     }
 }
 

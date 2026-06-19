@@ -58,7 +58,7 @@ public class Navigation_Bar {
             Top.setRight(right);
             BorderPane.setAlignment(left, Pos.CENTER);
             BorderPane.setAlignment(right, Pos.CENTER);
-            if (sys.isUserAdmin()) {
+            if (sys.canAccessPanel()) {
                 sys.changePage(Page.ADMIN);
                 Top.setCenter(null);
             } else {
@@ -89,8 +89,9 @@ public class Navigation_Bar {
         retBox.setMaxHeight(52);
 
         if (authenticated) {
-            if (sys.isUserAdmin()) {
-                Button adminBtn = new Button("Admin Panel");
+            if (sys.canAccessPanel()) {
+                String label = sys.isUserAdmin() ? "Admin Panel" : "My Portal";
+                Button adminBtn = new Button(label);
                 adminBtn.setPadding(new Insets(10, 22, 10, 22));
                 adminBtn.setBackground(new Background(new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(13), null)));
                 adminBtn.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 20));
@@ -232,7 +233,7 @@ public class Navigation_Bar {
         right = RightBlock(sys.isAuthenticated());
         Top.setRight(right);
         BorderPane.setAlignment(right, Pos.CENTER);
-        if (sys.isAuthenticated() && sys.isUserAdmin()) {
+        if (sys.isAuthenticated() && sys.canAccessPanel()) {
             Top.setCenter(null);
         } else {
             nav = CenterBlock();

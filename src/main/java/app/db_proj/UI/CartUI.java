@@ -2,13 +2,17 @@ package app.db_proj.UI;
 
 import app.db_proj.Cart_Logic;
 import app.db_proj.Labels;
+import app.db_proj.OrderDAO;
 import app.db_proj.SystemHandling;
+import app.db_proj.model.Item;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+
+import java.io.File;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -19,6 +23,7 @@ import java.util.List;
 public class CartUI {
     private HBox screen;
     private VBox cart_side, cart_scroll, payment_side;
+    private VBox orders_vb;
     private BorderPane payment_box, orders_box;
     private ScrollPane SP;
     private SystemHandling sys;
@@ -43,7 +48,13 @@ public class CartUI {
 
     public void refresh() {
         loadCartItems("");
+        refreshOrders();
         if (search_tf != null) search_tf.clear();
+    }
+
+    public void refreshOrders() {
+        if (orders_vb == null) return;
+        orders_vb.getChildren().setAll(CartOrdersUI.build(sys).getChildren());
     }
 
     public void loadCartItems(String search) {
@@ -79,53 +90,94 @@ public class CartUI {
     }
 
     private HBox makeDbItemCard(Cart_Logic.CartItemRow row) {
-        HBox card = new HBox(15);
+        HBox card = new HBox(0);
         card.setPrefWidth(Double.MAX_VALUE);
-        card.setPadding(new Insets(12));
-        card.setAlignment(Pos.CENTER_LEFT);
+        card.setMaxWidth(Double.MAX_VALUE);
         card.setBackground(new Background(new BackgroundFill(
-            Color.hsb(35, 0.12, 0.36, 1), new CornerRadii(12), null)));
+            Color.hsb(35, 0.14, 0.30, 1), new CornerRadii(14), null)));
         card.setCursor(Cursor.HAND);
         card.setOnMouseEntered(e -> card.setBackground(new Background(new BackgroundFill(
-            Color.hsb(35, 0.14, 0.43, 1), new CornerRadii(12), null))));
+            Color.hsb(35, 0.16, 0.38, 1), new CornerRadii(14), null))));
         card.setOnMouseExited(e -> card.setBackground(new Background(new BackgroundFill(
-            Color.hsb(35, 0.12, 0.36, 1), new CornerRadii(12), null))));
+            Color.hsb(35, 0.14, 0.30, 1), new CornerRadii(14), null))));
 
-        Image img = new Image(getClass().getResourceAsStream("/app/db_proj/Logo.jpg"));
+        // image panel
+        Image img = loadItemImage(row.getImagePath());
         ImageView iv = new ImageView(img);
-        iv.setFitWidth(70);
-        iv.setFitHeight(70);
+        iv.setFitWidth(90);
+        iv.setFitHeight(90);
         iv.setPreserveRatio(true);
+        VBox imgBox = new VBox(iv);
+        imgBox.setMinWidth(110);
+        imgBox.setPrefWidth(110);
+        imgBox.setAlignment(Pos.CENTER);
+        imgBox.setPadding(new Insets(10));
+        imgBox.setBackground(new Background(new BackgroundFill(
+            Color.hsb(35, 0.18, 0.20, 1), new CornerRadii(14, 0, 0, 14, false), null)));
 
-        VBox info = new VBox(5);
+        // info panel
+        VBox info = new VBox(6);
+        info.setPadding(new Insets(14, 12, 14, 14));
         HBox.setHgrow(info, Priority.ALWAYS);
 
         Label name = new Label(row.getName());
-        name.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 17));
+        name.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 16));
         name.setTextFill(Color.WHITE);
 
+        HBox priceQty = new HBox(16);
+        priceQty.setAlignment(Pos.CENTER_LEFT);
+
         Label price = new Label(String.format("₪ %.2f", row.getPrice()));
-        price.setFont(Font.font("Nunito", 16));
+        price.setFont(Font.font("Nunito", FontWeight.BOLD, 15));
         price.setTextFill(Color.hsb(48, 1, 0.92, 1));
 
-        Label qty = new Label("Qty: " + row.getQuantity());
+        Label qty = new Label("× " + row.getQuantity());
         qty.setFont(Font.font("Nunito", 14));
-        qty.setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+        qty.setTextFill(Color.hsb(30, 0.12, 0.72, 1));
 
-        info.getChildren().addAll(name, price, qty);
+        Label subtotal = new Label(String.format("= ₪ %.2f", row.getPrice() * row.getQuantity()));
+        subtotal.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+        subtotal.setTextFill(Color.hsb(120, 0.45, 0.72, 1));
 
+        priceQty.getChildren().addAll(price, qty, subtotal);
+
+        String typeTxt = row.getItemType() != null ? row.getItemType().toUpperCase() : "";
+        Label typeBadge = new Label(typeTxt);
+        typeBadge.setFont(Font.font("Nunito", FontWeight.BOLD, 11));
+        typeBadge.setTextFill(Color.hsb(48, 0.9, 0.30, 1));
+        typeBadge.setPadding(new Insets(2, 8, 2, 8));
+        typeBadge.setBackground(new Background(new BackgroundFill(
+            Color.hsb(48, 1, 0.92, 1), new CornerRadii(5), null)));
+
+        info.getChildren().addAll(name, priceQty, typeBadge);
+
+        // clicking image or info panel opens item detail
+        Item detailItem = new Item(row.getItemId(), row.getName(), row.getPrice(),
+            0, row.getItemType(), row.getImagePath(), null, null);
+        imgBox.setOnMouseClicked(e -> sys.openItemDetail(detailItem));
+        info.setOnMouseClicked(e -> sys.openItemDetail(detailItem));
+
+        // remove button
         ImageView trashIcon = new ImageView(
             new Image(getClass().getResourceAsStream("/app/db_proj/icons8-trash-96.png")));
-        Button removeBtn = new Buttons(null, null, trashIcon, 28).getBtn();
-        removeBtn.setPadding(new Insets(8));
+        Button removeBtn = new Buttons(null, null, trashIcon, 24).getBtn();
+        removeBtn.setPadding(new Insets(12, 14, 12, 8));
         removeBtn.setOnAction(e -> {
             if (sys.getCurrentUserId() != null)
                 Cart_Logic.removeFromCart(sys.getConn(), sys.getCurrentUserId(), row.getItemId());
             loadCartItems(search_tf != null ? search_tf.getText().trim() : "");
         });
 
-        card.getChildren().addAll(iv, info, removeBtn);
+        card.getChildren().addAll(imgBox, info, removeBtn);
         return card;
+    }
+
+    private Image loadItemImage(String path) {
+        if (path != null && !path.isBlank()) {
+            try { return new Image(new File(path).toURI().toString()); }
+            catch (Exception ignored) {}
+        }
+        return new Image(getClass().getResourceAsStream("/app/db_proj/Logo.jpg"));
     }
 
     private void updateTotal(double total) {
@@ -296,6 +348,17 @@ public class CartUI {
             new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(12), null)).getBtn();
         order_btn.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 18));
         order_btn.setMaxWidth(Double.MAX_VALUE);
+        order_btn.setOnAction(e -> {
+            Integer uid = sys.getCurrentUserId();
+            if (uid == null) return;
+            int orderId = OrderDAO.placeOrder(sys.getConn(), uid);
+            if (orderId > 0) {
+                loadCartItems("");
+                refreshOrders();
+                updateTotal(0.0);
+                if (search_tf != null) search_tf.clear();
+            }
+        });
 
         bottom.getChildren().addAll(total, order_btn);
         payment_box.setBottom(bottom);
@@ -324,7 +387,8 @@ public class CartUI {
 
         orders_box.setTop(top);
 
-        VBox orders_vb = new VBox(7);
+        orders_vb = new VBox(7);
+        orders_vb.getChildren().addAll(CartOrdersUI.build(sys).getChildren());
         ScrollPane scroll_orders = new ScrollPane(orders_vb);
         scroll_orders.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         scroll_orders.setFitToWidth(true);
