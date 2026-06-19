@@ -79,14 +79,16 @@ public class Admin_Logic {
         private final String itemType;
         private final String imagePath;
         private final String supplierName;
+        private final int supplierId;
 
-        public ItemRow(int itemId, String name, double price, String itemType, String imagePath, String supplierName) {
+        public ItemRow(int itemId, String name, double price, String itemType, String imagePath, String supplierName, int supplierId) {
             this.itemId = itemId;
             this.name = name;
             this.price = price;
             this.itemType = itemType;
             this.imagePath = imagePath;
             this.supplierName = supplierName;
+            this.supplierId = supplierId;
         }
 
         public int getItemId()          { return itemId; }
@@ -95,6 +97,7 @@ public class Admin_Logic {
         public String getItemType()     { return itemType; }
         public String getImagePath()    { return imagePath; }
         public String getSupplierName() { return supplierName; }
+        public int getSupplierId()      { return supplierId; }
     }
 
     // small holder for one supplier row
@@ -115,6 +118,9 @@ public class Admin_Logic {
         public String getName()     { return name; }
         public String getEmail()    { return email; }
         public String getPhone()    { return phone; }
+
+        @Override
+        public String toString() { return name; }
     }
 
     // fetch all customers joined with their person info
@@ -216,7 +222,7 @@ public class Admin_Logic {
         List<ItemRow> list = new ArrayList<>();
         try {
             PreparedStatement ps = conn.prepareStatement(
-                "SELECT I.item_id, I.name, I.price, I.item_type, I.image_path, S.name AS supplier_name " +
+                "SELECT I.item_id, I.name, I.price, I.item_type, I.image_path, S.name AS supplier_name, I.supplier_id " +
                 "FROM Item I " +
                 "LEFT JOIN Supplier S ON I.supplier_id = S.supplier_id " +
                 "LEFT JOIN BranchInventory BI ON I.item_id = BI.item_id AND BI.branch_id = ? " +
@@ -227,7 +233,8 @@ public class Admin_Logic {
             while (rs.next()) {
                 list.add(new ItemRow(
                     rs.getInt("item_id"), rs.getString("name"), rs.getDouble("price"),
-                    rs.getString("item_type"), rs.getString("image_path"), rs.getString("supplier_name")
+                    rs.getString("item_type"), rs.getString("image_path"), rs.getString("supplier_name"),
+                    rs.getInt("supplier_id")
                 ));
             }
         } catch (SQLException ex) { System.out.println(ex.getMessage()); }
@@ -405,7 +412,7 @@ public class Admin_Logic {
         try {
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(
-                "SELECT I.item_id, I.name, I.price, I.item_type, I.image_path, S.name AS supplier_name " +
+                "SELECT I.item_id, I.name, I.price, I.item_type, I.image_path, S.name AS supplier_name, I.supplier_id " +
                 "FROM Item I LEFT JOIN Supplier S ON I.supplier_id = S.supplier_id;"
             );
             while (rs.next()) {
@@ -415,7 +422,8 @@ public class Admin_Logic {
                     rs.getDouble("price"),
                     rs.getString("item_type"),
                     rs.getString("image_path"),
-                    rs.getString("supplier_name")
+                    rs.getString("supplier_name"),
+                    rs.getInt("supplier_id")
                 ));
             }
         } catch (SQLException ex) {
@@ -427,13 +435,14 @@ public class Admin_Logic {
     // update an existing item's fields; imagePath null means keep the old value
     public static String updateItem(Connection conn, int itemId,
                                     String name, String priceStr, String wholesaleStr,
-                                    String itemType, String imagePath) {
+                                    String itemType, String imagePath, int supplierId) {
         if (name.isBlank() || priceStr.isBlank()) return "empty";
         try {
             double price     = Double.parseDouble(priceStr);
             double wholesale = wholesaleStr.isBlank() ? 0 : Double.parseDouble(wholesaleStr);
+            int effectiveSupplier = supplierId > 0 ? supplierId : ensureDefaultSupplier(conn);
             PreparedStatement ps = conn.prepareStatement(
-                "UPDATE Item SET name=?, price=?, wholesale_price=?, item_type=?, image_path=? " +
+                "UPDATE Item SET name=?, price=?, wholesale_price=?, item_type=?, image_path=?, supplier_id=? " +
                 "WHERE item_id=?"
             );
             ps.setString(1, name);
@@ -441,7 +450,8 @@ public class Admin_Logic {
             ps.setDouble(3, wholesale);
             ps.setString(4, itemType.isBlank() ? null : itemType);
             ps.setString(5, imagePath != null && !imagePath.isBlank() ? imagePath : null);
-            ps.setInt(6, itemId);
+            ps.setInt(6, effectiveSupplier);
+            ps.setInt(7, itemId);
             ps.executeUpdate();
             return "ok";
         } catch (NumberFormatException ex) {

@@ -113,10 +113,10 @@ CREATE TABLE IF NOT EXISTS Item (
   wholesale_price DECIMAL(10, 0) DEFAULT NULL,
   item_image      VARCHAR(100)   DEFAULT NULL,
   image_path      VARCHAR(500)   DEFAULT NULL,
-  supplier_id     INT            DEFAULT NULL,
+  supplier_id     INT            NOT NULL,
   PRIMARY KEY (item_id),
   CONSTRAINT fk_item_supplier FOREIGN KEY (supplier_id)
-    REFERENCES Supplier (supplier_id) ON DELETE SET NULL
+    REFERENCES Supplier (supplier_id) ON DELETE RESTRICT ON UPDATE NO ACTION
 );
 
 CREATE TABLE IF NOT EXISTS SupplierItem (

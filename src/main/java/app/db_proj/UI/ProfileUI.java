@@ -74,7 +74,7 @@ public class ProfileUI {
 
 
         HBox ordersBtn = profileBtn("My Orders");
-        ordersBtn.setOnMouseClicked(e -> sys.changePage(Page.ORDERS));
+        ordersBtn.setOnMouseClicked(e -> { sys.hideProf(); sys.changePage(Page.CART); });
         ordersBtn.setOnMouseEntered(e -> ordersBtn.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.15, 0.34, 1), new CornerRadii(12), null))));
         ordersBtn.setOnMouseExited(e -> ordersBtn.setBackground(Background.EMPTY));
 

@@ -375,19 +375,14 @@ public class CartUI {
             Color.hsb(35, 0.20, 0.22, 1), new CornerRadii(12), null)));
 
         HBox top = new HBox(0);
-        spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Label title_in_box = new Labels("My Orders",
             Font.font("Adwaita Mono", FontWeight.BOLD, 30), Color.hsb(48, 1, 0.92, 1)).getLabel();
         title_in_box.setPadding(new Insets(5));
 
-        Button toOrders = new Buttons(null, null,
-            new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/expand.png"))), 38).getBtn();
-
         top.setAlignment(Pos.CENTER);
         top.setPadding(new Insets(0, 0, 7, 0));
-        top.getChildren().addAll(title_in_box, spacer, toOrders);
+        top.getChildren().add(title_in_box);
 
         orders_box.setTop(top);
 

@@ -734,6 +734,7 @@ public class Admin_UI {
         TextField priceField     = formField("Price");
         TextField wholesaleField = formField("Wholesale Price");
         ComboBox<String> typeField = itemTypeCombo(row.getItemType());
+        ComboBox<Admin_Logic.SupplierRow> supplierCb = supplierCombo(row.getSupplierId());
 
         nameField.setText(row.getName() != null ? row.getName() : "");
         priceField.setText(String.valueOf(row.getPrice()));
@@ -788,9 +789,10 @@ public class Admin_UI {
             warn_empty.setVisible(false); warn_price.setVisible(false);
             ok_msg.setVisible(false); err_msg.setVisible(false);
 
+            int suppId = supplierCb.getValue() != null ? supplierCb.getValue().getSupplierId() : 0;
             String res = Admin_Logic.updateItem(sys.getConn(), row.getItemId(),
                 nameField.getText(), priceField.getText(), wholesaleField.getText(),
-                typeField.getValue() != null ? typeField.getValue() : "", imagePath[0]);
+                typeField.getValue() != null ? typeField.getValue() : "", imagePath[0], suppId);
 
             if (res.equals("empty"))       { warn_empty.setVisible(true); return; }
             if (res.equals("price_error")) { warn_price.setVisible(true); return; }
@@ -810,7 +812,7 @@ public class Admin_UI {
 
         form.getChildren().addAll(
             title, warn_empty, warn_price, ok_msg, err_msg,
-            nameField, priceField, wholesaleField, typeField,
+            nameField, priceField, wholesaleField, typeField, supplierCb,
             chooserBtn, imageLbl, preview,
             stockSep, stockHead, stockField,
             saveBtn
@@ -1204,6 +1206,7 @@ public class Admin_UI {
         TextField name       = formField("Item Name");
         TextField price      = formField("Price (e.g. 12.50)");
         ComboBox<String> item_type = itemTypeCombo(null);
+        ComboBox<Admin_Logic.SupplierRow> supplierCb = supplierCombo(0);
         TextField stockField = formField("Quantity at your branch (optional)");
 
         // image chooser row
@@ -1250,9 +1253,10 @@ public class Admin_UI {
             ok_msg.setVisible(false);
             err_msg.setVisible(false);
 
+            int suppId = supplierCb.getValue() != null ? supplierCb.getValue().getSupplierId() : 0;
             int newId = Admin_Logic.addItem(
                 sys.getConn(), name.getText(), price.getText(),
-                item_type.getValue() != null ? item_type.getValue() : "", imagePath[0]);
+                item_type.getValue() != null ? item_type.getValue() : "", imagePath[0], suppId);
 
             if (newId == -1)      warn_empty.setVisible(true);
             else if (newId == -2) warn_price.setVisible(true);
@@ -1274,7 +1278,7 @@ public class Admin_UI {
         });
 
         form.getChildren().addAll(title, warn_empty, warn_price, ok_msg, err_msg,
-            name, price, item_type, stockField, chooserBtn, imageLbl, preview, submit);
+            name, price, item_type, supplierCb, stockField, chooserBtn, imageLbl, preview, submit);
         return form;
     }
 
@@ -1366,6 +1370,35 @@ public class Admin_UI {
             }
         });
         cb.setItems(FXCollections.observableArrayList(Admin_Logic.getBranches(sys.getConn())));
+        return cb;
+    }
+
+    private ComboBox<Admin_Logic.SupplierRow> supplierCombo(int selectedSupplierId) {
+        ComboBox<Admin_Logic.SupplierRow> cb = new ComboBox<>();
+        cb.setPromptText("Supplier");
+        cb.setMaxWidth(Double.MAX_VALUE);
+        cb.setPrefHeight(36);
+        cb.setStyle("-fx-background-color: hsb(35, 12%, 20%); -fx-background-radius: 7;"
+            + "-fx-font-size: 14px; -fx-text-fill: #d4c0a0;");
+        cb.setButtonCell(new ListCell<>() {
+            @Override protected void updateItem(Admin_Logic.SupplierRow s, boolean empty) {
+                super.updateItem(s, empty);
+                setText(empty || s == null ? "Supplier" : s.getName());
+                setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+                setStyle("-fx-font-size: 14px; -fx-background-color: transparent;");
+            }
+        });
+        List<Admin_Logic.SupplierRow> suppliers = Admin_Logic.getSuppliers(sys.getConn());
+        cb.getItems().addAll(suppliers);
+        Admin_Logic.SupplierRow toSelect = null;
+        Admin_Logic.SupplierRow defaultSupplier = null;
+        for (Admin_Logic.SupplierRow s : suppliers) {
+            if (s.getSupplierId() == selectedSupplierId) toSelect = s;
+            if ("Bawabet Al-Quds".equalsIgnoreCase(s.getName())) defaultSupplier = s;
+        }
+        if (toSelect == null) toSelect = defaultSupplier;
+        if (toSelect == null && !suppliers.isEmpty()) toSelect = suppliers.get(0);
+        if (toSelect != null) cb.setValue(toSelect);
         return cb;
     }
 
