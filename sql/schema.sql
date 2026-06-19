@@ -163,36 +163,18 @@ CREATE TABLE IF NOT EXISTS PackageItem (
     REFERENCES Item    (item_id)
 );
 
-CREATE TABLE IF NOT EXISTS RoastBatch (
-  batch_id    INT            NOT NULL AUTO_INCREMENT,
-  branch_id   INT            NOT NULL,
-  roast_date  DATE           NOT NULL,
-  kg_green    DECIMAL(8, 2)  NOT NULL,
-  kg_roasted  DECIMAL(8, 2)  NOT NULL,
-  roast_level VARCHAR(20)    NOT NULL,
-  PRIMARY KEY (batch_id),
-  CONSTRAINT fk_roastbatch_branch FOREIGN KEY (branch_id)
-    REFERENCES Branch (branch_id) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS Coffee (
-  item_id  INT NOT NULL,
-  batch_id INT DEFAULT NULL,
+  item_id INT NOT NULL,
   PRIMARY KEY (item_id),
-  CONSTRAINT fk_coffee_item  FOREIGN KEY (item_id)
-    REFERENCES Item      (item_id)   ON DELETE CASCADE,
-  CONSTRAINT fk_coffee_batch FOREIGN KEY (batch_id)
-    REFERENCES RoastBatch (batch_id) ON DELETE SET NULL
+  CONSTRAINT fk_coffee_item FOREIGN KEY (item_id)
+    REFERENCES Item (item_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Roasts (
-  item_id  INT NOT NULL,
-  batch_id INT DEFAULT NULL,
+  item_id INT NOT NULL,
   PRIMARY KEY (item_id),
-  CONSTRAINT fk_roasts_item  FOREIGN KEY (item_id)
-    REFERENCES Item       (item_id)   ON DELETE CASCADE,
-  CONSTRAINT fk_roasts_batch FOREIGN KEY (batch_id)
-    REFERENCES RoastBatch (batch_id)  ON DELETE SET NULL
+  CONSTRAINT fk_roasts_item FOREIGN KEY (item_id)
+    REFERENCES Item (item_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Spice (

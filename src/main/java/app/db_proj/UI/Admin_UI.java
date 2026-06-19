@@ -4,7 +4,7 @@ import app.db_proj.Admin_Logic;
 import app.db_proj.Labels;
 import app.db_proj.OrderDAO;
 import app.db_proj.PackageDAO;
-import app.db_proj.RoastBatchDAO;
+
 import app.db_proj.SystemHandling;
 import app.db_proj.WarehouseDAO;
 import app.db_proj.model.Order;
@@ -42,7 +42,7 @@ public class Admin_UI {
     // section roots
     private VBox branchSection, employeesSection, usersSection, itemsSection,
                  suppliersSection, ordersSection, reportsSection, packagesSection,
-                 roastBatchSection, warehouseSection;
+                 warehouseSection;
 
     // card list containers
     private VBox branch_cards_box;
@@ -53,7 +53,7 @@ public class Admin_UI {
     private VBox supplier_cards_box;
     private VBox order_cards_box;
     private VBox package_cards_box;
-    private VBox roast_batch_cards_box;
+
     private VBox warehouse_cards_box;
 
     // branch section detail box (for admin's own branch)
@@ -105,8 +105,8 @@ public class Admin_UI {
 
         String[] names;
         if (isFullAdmin) {
-            names = new String[]{"Branch", "Employees", "Users", "Items", "Suppliers", "Orders", "Reports", "Packages", "Roast Batches", "Warehouses"};
-            sectionIndices = new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+            names = new String[]{"Branch", "Employees", "Users", "Items", "Suppliers", "Orders", "Reports", "Packages", "Warehouses"};
+            sectionIndices = new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8};
         } else {
             names = new String[]{"Branch", "Employees", "Suppliers", "Orders"};
             sectionIndices = new int[]{0, 1, 4, 5};
@@ -188,13 +188,12 @@ public class Admin_UI {
             case 5 -> refresh_orders();
             case 6 -> refresh_reports();
             case 7 -> refresh_packages();
-            case 8 -> refresh_roast_batches();
-            case 9 -> refresh_warehouses();
+            case 8 -> refresh_warehouses();
         }
 
         VBox[] sections = {branchSection, employeesSection, usersSection, itemsSection,
                            suppliersSection, ordersSection, reportsSection, packagesSection,
-                           roastBatchSection, warehouseSection};
+                           warehouseSection};
         main_content.getChildren().setAll(sections[sectionIdx]);
         VBox.setVgrow(sections[sectionIdx], Priority.ALWAYS);
     }
@@ -215,7 +214,6 @@ public class Admin_UI {
         build_orders_section();
         build_reports_section();
         build_packages_section();
-        build_roast_batches_section();
         build_warehouse_section();
     }
 
@@ -435,58 +433,6 @@ public class Admin_UI {
         locLbl.setTextFill(Color.hsb(30, 0.12, 0.65, 1));
         body.getChildren().add(locLbl);
 
-        // ── Roast Batches for this branch ─────────────────────────────────────
-        body.getChildren().add(new Separator());
-        HBox batchHeader = new HBox(8);
-        batchHeader.setAlignment(Pos.CENTER_LEFT);
-        Label batchHeadLbl = new Label("Roast Batches");
-        batchHeadLbl.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
-        batchHeadLbl.setTextFill(Color.hsb(25, 0.75, 0.80, 1));
-        HBox.setHgrow(batchHeadLbl, Priority.ALWAYS);
-        Button addBatchBtn = new Button("+ New Batch");
-        addBatchBtn.setStyle("-fx-background-color: hsb(25, 55%, 60%); -fx-background-radius: 7;"
-            + "-fx-font-size: 12px; -fx-text-fill: white;");
-        addBatchBtn.setCursor(Cursor.HAND);
-        addBatchBtn.setOnAction(ev -> showFormOverlay(make_roast_batch_form(b.branchId)));
-        batchHeader.getChildren().addAll(batchHeadLbl, addBatchBtn);
-        body.getChildren().add(batchHeader);
-
-        List<RoastBatchDAO.RoastBatchRow> batches = RoastBatchDAO.getByBranch(sys.getConn(), b.branchId);
-        if (batches.isEmpty()) {
-            Label none = new Label("No roast batches recorded for this branch");
-            none.setFont(Font.font("Nunito", 13));
-            none.setTextFill(Color.hsb(30, 0.10, 0.55, 1));
-            body.getChildren().add(none);
-        } else {
-            for (RoastBatchDAO.RoastBatchRow rb : batches) {
-                HBox bRow = new HBox(10);
-                bRow.setAlignment(Pos.CENTER_LEFT);
-                bRow.setPadding(new Insets(8, 12, 8, 12));
-                bRow.setBackground(new Background(new BackgroundFill(
-                    Color.hsb(25, 0.18, 0.28, 1), new CornerRadii(8), null)));
-
-                VBox bInfo = new VBox(2);
-                HBox.setHgrow(bInfo, Priority.ALWAYS);
-                Label bId = new Label("Batch #" + rb.batchId + "  ·  " + rb.roastDate);
-                bId.setFont(Font.font("Nunito", FontWeight.BOLD, 13));
-                bId.setTextFill(Color.WHITE);
-                Label bDet = new Label(rb.roastLevel + "  ·  " + rb.kgGreen + " kg green → " + rb.kgRoasted + " kg roasted");
-                bDet.setFont(Font.font("Nunito", 12));
-                bDet.setTextFill(Color.hsb(30, 0.12, 0.65, 1));
-                bInfo.getChildren().addAll(bId, bDet);
-
-                Button editBatch = new Button("Edit");
-                editBatch.setStyle("-fx-background-color: hsb(35, 14%, 30%); -fx-background-radius: 6;"
-                    + "-fx-font-size: 12px; -fx-text-fill: #d4c0a0;");
-                editBatch.setCursor(Cursor.HAND);
-                editBatch.setOnAction(ev -> showFormOverlay(make_roast_batch_edit_form(rb)));
-
-                bRow.getChildren().addAll(bInfo, editBatch);
-                body.getChildren().add(bRow);
-            }
-        }
-        body.getChildren().add(new Separator());
-
         // ── Stock ─────────────────────────────────────────────────────────────
         List<Admin_Logic.StockRow> stock = Admin_Logic.getBranchStock(sys.getConn(), b.branchId);
         List<Admin_Logic.StockRow> needsRefill = new ArrayList<>();
@@ -630,143 +576,13 @@ public class Admin_UI {
         return row;
     }
 
-    // ── ROAST BATCHES SECTION ────────────────────────────────────────────────
+    // ── ITEM TYPE COMBO ──────────────────────────────────────────────────────
 
-    private void build_roast_batches_section() {
-        roastBatchSection = new VBox(12);
-        roastBatchSection.setPadding(new Insets(14, 0, 14, 14));
-        VBox.setVgrow(roastBatchSection, Priority.ALWAYS);
-
-        HBox header = sectionHeader("Roast Batches", e -> showFormOverlay(make_roast_batch_form(-1)));
-
-        roast_batch_cards_box = new VBox(10);
-        roast_batch_cards_box.setPadding(new Insets(2, 0, 10, 0));
-
-        ScrollPane scroll = cardScroll(roast_batch_cards_box);
-        roastBatchSection.getChildren().addAll(header, scroll);
-    }
-
-    private void refresh_roast_batches() {
-        if (roast_batch_cards_box == null) return;
-        roast_batch_cards_box.getChildren().clear();
-        List<RoastBatchDAO.RoastBatchRow> rows = RoastBatchDAO.getAll(sys.getConn());
-        if (rows.isEmpty()) {
-            roast_batch_cards_box.getChildren().add(emptyLabel("No roast batches yet"));
-            return;
-        }
-        for (RoastBatchDAO.RoastBatchRow row : rows)
-            roast_batch_cards_box.getChildren().add(makeRoastBatchCard(row));
-    }
-
-    private HBox makeRoastBatchCard(RoastBatchDAO.RoastBatchRow row) {
-        HBox card = baseCard();
-
-        Region accent = accentBar(Color.hsb(25, 0.75, 0.65, 1));
-
-        VBox info = new VBox(5);
-        HBox.setHgrow(info, Priority.ALWAYS);
-
-        Label batchLbl = cardTitle("Batch #" + row.batchId + "  –  " + row.branchName);
-        Label details  = cardSub(row.roastDate + "  ·  " + row.roastLevel
-            + "  ·  " + row.kgGreen + " kg green → " + row.kgRoasted + " kg roasted");
-        info.getChildren().addAll(batchLbl, details);
-
-        Button editBtn = new Button("Edit");
-        editBtn.setStyle("-fx-background-color: hsb(35, 14%, 30%); -fx-background-radius: 7;"
-            + "-fx-font-size: 13px; -fx-text-fill: #d4c0a0;");
-        editBtn.setCursor(Cursor.HAND);
-        editBtn.setOnMouseEntered(e -> editBtn.setStyle("-fx-background-color: hsb(35, 16%, 40%);"
-            + "-fx-background-radius: 7; -fx-font-size: 13px; -fx-text-fill: #d4c0a0;"));
-        editBtn.setOnMouseExited(e -> editBtn.setStyle("-fx-background-color: hsb(35, 14%, 30%);"
-            + "-fx-background-radius: 7; -fx-font-size: 13px; -fx-text-fill: #d4c0a0;"));
-        editBtn.setOnAction(e -> showFormOverlay(make_roast_batch_edit_form(row)));
-
-        card.getChildren().addAll(accent, info, editBtn);
-        return card;
-    }
-
-    private VBox make_roast_batch_form(int forcedBranchId) {
-        VBox form = formShell();
-
-        Label title   = formTitle(forcedBranchId > 0 ? "New Roast Batch" : "Add Roast Batch");
-        Label ok_msg  = statusLabel("Batch added!", Color.hsb(120, 0.5, 0.85, 1));
-        Label err_msg = statusLabel("Fill all fields with valid values", Color.RED);
-
-        // Branch selector (only shown for full admin adding from the global section)
-        ComboBox<Admin_Logic.BranchRow> branchSel = new ComboBox<>();
-        if (forcedBranchId < 0 && isFullAdmin) {
-            branchSel.setMaxWidth(Double.MAX_VALUE);
-            branchSel.setPromptText("Select Branch");
-            branchSel.getItems().addAll(Admin_Logic.getBranches(sys.getConn()));
-            branchSel.setBackground(new Background(new BackgroundFill(
-                Color.hsb(35, 0.12, 0.20, 1), new CornerRadii(7), null)));
-            branchSel.setPrefHeight(36);
-        }
-
-        TextField dateField      = formField("Roast Date (YYYY-MM-DD)");
-        TextField kgGreenField   = formField("Kg Green (e.g. 50.0)");
-        TextField kgRoastedField = formField("Kg Roasted (e.g. 42.5)");
-
-        ComboBox<String> levelCombo = roastLevelCombo(null);
-
-        Button submit = submitBtn("Add Batch");
-        submit.setOnAction(e -> {
-            ok_msg.setVisible(false); err_msg.setVisible(false);
-            int targetBranch = forcedBranchId > 0 ? forcedBranchId
-                : (branchSel.getValue() != null ? branchSel.getValue().branchId : -1);
-            if (targetBranch < 0 || levelCombo.getValue() == null) { err_msg.setVisible(true); return; }
-            int id = RoastBatchDAO.addBatch(sys.getConn(), targetBranch,
-                dateField.getText(), kgGreenField.getText(), kgRoastedField.getText(), levelCombo.getValue());
-            if (id > 0) {
-                ok_msg.setVisible(true);
-                dateField.clear(); kgGreenField.clear(); kgRoastedField.clear();
-                levelCombo.setValue(null);
-                if (forcedBranchId < 0) refresh_roast_batches();
-            } else err_msg.setVisible(true);
-        });
-
-        form.getChildren().addAll(title, ok_msg, err_msg);
-        if (forcedBranchId < 0 && isFullAdmin) form.getChildren().add(branchSel);
-        form.getChildren().addAll(dateField, kgGreenField, kgRoastedField, levelCombo, submit);
-        return form;
-    }
-
-    private VBox make_roast_batch_edit_form(RoastBatchDAO.RoastBatchRow row) {
-        VBox form = formShell();
-
-        Label title   = formTitle("Edit Batch #" + row.batchId);
-        Label ok_msg  = statusLabel("Saved!", Color.hsb(120, 0.5, 0.85, 1));
-        Label err_msg = statusLabel("Fill all fields with valid values", Color.RED);
-
-        TextField dateField      = formField("Roast Date (YYYY-MM-DD)");
-        TextField kgGreenField   = formField("Kg Green");
-        TextField kgRoastedField = formField("Kg Roasted");
-
-        dateField.setText(row.roastDate != null ? row.roastDate : "");
-        kgGreenField.setText(String.valueOf(row.kgGreen));
-        kgRoastedField.setText(String.valueOf(row.kgRoasted));
-
-        ComboBox<String> levelCombo = roastLevelCombo(row.roastLevel);
-
-        Button save = submitBtn("Save Changes");
-        save.setOnAction(e -> {
-            ok_msg.setVisible(false); err_msg.setVisible(false);
-            if (levelCombo.getValue() == null) { err_msg.setVisible(true); return; }
-            boolean ok = RoastBatchDAO.updateBatch(sys.getConn(), row.batchId,
-                dateField.getText(), kgGreenField.getText(), kgRoastedField.getText(), levelCombo.getValue());
-            if (ok) { ok_msg.setVisible(true); refresh_roast_batches(); }
-            else err_msg.setVisible(true);
-        });
-
-        form.getChildren().addAll(title, ok_msg, err_msg, dateField, kgGreenField, kgRoastedField, levelCombo, save);
-        return form;
-    }
-
-    // ── ITEM TYPE / ROAST LEVEL COMBOS ───────────────────────────────────────
+    private static final String[] ITEM_TYPES = {"Coffee", "Roasts", "Spice", "Package"};
 
     private ComboBox<String> itemTypeCombo(String preselect) {
         ComboBox<String> cb = new ComboBox<>();
-        cb.getItems().addAll(RoastBatchDAO.ITEM_TYPES);
+        cb.getItems().addAll(ITEM_TYPES);
         cb.setPromptText("Item Type");
         cb.setMaxWidth(Double.MAX_VALUE);
         cb.setPrefHeight(36);
@@ -781,30 +597,10 @@ public class Admin_UI {
             }
         });
         if (preselect != null) {
-            for (String t : RoastBatchDAO.ITEM_TYPES) {
+            for (String t : ITEM_TYPES) {
                 if (t.equalsIgnoreCase(preselect)) { cb.setValue(t); break; }
             }
         }
-        return cb;
-    }
-
-    private ComboBox<String> roastLevelCombo(String preselect) {
-        ComboBox<String> cb = new ComboBox<>();
-        cb.getItems().addAll(RoastBatchDAO.ROAST_LEVELS);
-        cb.setPromptText("Roast Level");
-        cb.setMaxWidth(Double.MAX_VALUE);
-        cb.setPrefHeight(36);
-        cb.setStyle("-fx-background-color: hsb(35, 12%, 20%); -fx-background-radius: 7;"
-            + "-fx-font-size: 14px; -fx-text-fill: #d4c0a0;");
-        cb.setButtonCell(new ListCell<>() {
-            @Override protected void updateItem(String s, boolean empty) {
-                super.updateItem(s, empty);
-                setText(empty || s == null ? "Roast Level" : s);
-                setTextFill(Color.hsb(30, 0.12, 0.78, 1));
-                setStyle("-fx-font-size: 14px; -fx-background-color: transparent;");
-            }
-        });
-        if (preselect != null) cb.setValue(preselect);
         return cb;
     }
 
@@ -1680,7 +1476,9 @@ public class Admin_UI {
     private void refresh_orders() {
         if (order_cards_box == null) return;
         order_cards_box.getChildren().clear();
-        List<Order> orders = OrderDAO.getAllOrders(sys.getConn());
+        List<Order> orders = (!isFullAdmin && adminBranchId >= 0)
+            ? OrderDAO.getOrdersByBranch(sys.getConn(), adminBranchId)
+            : OrderDAO.getAllOrders(sys.getConn());
         if (orders.isEmpty()) {
             order_cards_box.getChildren().add(emptyLabel("No orders yet"));
             return;

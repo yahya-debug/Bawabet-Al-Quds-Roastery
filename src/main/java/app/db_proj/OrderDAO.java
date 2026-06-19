@@ -199,6 +199,36 @@ public class OrderDAO {
         return orders;
     }
 
+    // fetch orders for a specific branch (employee view), newest first
+    public static List<Order> getOrdersByBranch(Connection conn, int branchId) {
+        List<Order> orders = new ArrayList<>();
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT O.order_id, O.person_id, P.name AS person_name, " +
+                "       O.order_date, O.status, O.total " +
+                "FROM `Order` O JOIN Person P ON O.person_id = P.person_id " +
+                "WHERE O.branch_id = ? ORDER BY O.order_date DESC"
+            );
+            ps.setInt(1, branchId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                int orderId = rs.getInt("order_id");
+                orders.add(new Order(
+                    orderId,
+                    rs.getInt("person_id"),
+                    rs.getString("person_name"),
+                    rs.getTimestamp("order_date").toLocalDateTime(),
+                    rs.getString("status"),
+                    rs.getDouble("total"),
+                    getOrderItems(conn, orderId)
+                ));
+            }
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+        }
+        return orders;
+    }
+
     // fetch line items for one order, joined with item name
     public static List<OrderItem> getOrderItems(Connection conn, int orderId) {
         List<OrderItem> items = new ArrayList<>();

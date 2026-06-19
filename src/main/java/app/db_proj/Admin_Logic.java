@@ -561,13 +561,22 @@ public class Admin_Logic {
 
     public static boolean deleteItem(Connection conn, int itemId) {
         try {
-            PreparedStatement ps = conn.prepareStatement(
-                "DELETE FROM Item WHERE item_id = ?"
-            );
+            conn.setAutoCommit(false);
+            // OrderItem has no ON DELETE CASCADE on item_id — remove first to unblock
+            PreparedStatement oi = conn.prepareStatement("DELETE FROM OrderItem WHERE item_id = ?");
+            oi.setInt(1, itemId);
+            oi.executeUpdate();
+            // Item deletion cascades to Cart, BranchInventory, WarehouseInventory,
+            // SupplierItem, PackageItem, Review, Coffee, Roasts, Spice
+            PreparedStatement ps = conn.prepareStatement("DELETE FROM Item WHERE item_id = ?");
             ps.setInt(1, itemId);
-            return ps.executeUpdate() > 0;
+            int rows = ps.executeUpdate();
+            conn.commit();
+            conn.setAutoCommit(true);
+            return rows > 0;
         } catch (SQLException ex) {
             System.out.println("deleteItem: " + ex.getMessage());
+            try { conn.rollback(); conn.setAutoCommit(true); } catch (SQLException ignored) {}
             return false;
         }
     }

@@ -100,16 +100,6 @@ WarehouseInventory  (stock of an item at a specific warehouse)
   FK  item_id       → Item.item_id
       quantity      INT
 
-RoastBatch
-  PK  batch_id       INT AUTO_INCREMENT
-  FK  branch_id      → Branch.branch_id
-  FK  item_id        → Item.item_id
-      roast_date     DATE
-      kg_green       DECIMAL(10,2)
-      kg_roasted     DECIMAL(10,2)
-      roast_level    VARCHAR(45)
-      item_type      VARCHAR(45)
-
 Cart
   PK  (person_id, item_id)
   FK  person_id  → Person.person_id
@@ -178,7 +168,6 @@ Location         1──< Warehouse         (one location per warehouse)
 Branch           1──< Admin             (admin manages a branch; null = full admin)
 Branch           1──< Employee          (employee belongs to a branch)
 Branch           1──< BranchInventory   (branch stocks many items)
-Branch           1──< RoastBatch        (roast batches at a branch)
 
 Warehouse        1──< WarehouseInventory  (warehouse holds many items)
 
@@ -193,7 +182,6 @@ Item             1──< OrderItem
 Item             1──< Cart
 Item             1──< Review
 Item             1──< Discount            (optional per-item discount)
-Item             1──< RoastBatch
 
 Supplier         1──< SupplierItem        (supplier supplies many items)
 Supplier         1──< Item               (default supplier reference)

@@ -54,8 +54,8 @@ public class SystemHandling {
         Cart_Logic.ensureCartTable(conn);
         Admin_Logic.ensureItemImageColumn(conn);
         Admin_Logic.ensureSupplierTable(conn); // also calls ensureDefaultSupplier internally
-        RoastBatchDAO.ensureTables(conn);
         WarehouseDAO.ensureTables(conn);
+        dropLegacyTables(conn);
 
         // wire the nav-bar search to the home page item filter
         Top.setSearchAction(q -> home_page.search(q));
@@ -93,6 +93,21 @@ public class SystemHandling {
         // since the profile is a pop-up like screen; we dont need to consider it as a separated page
         if (!page.equals(Page.PROFILE)) curPage = page;
 
+    }
+
+    // one-time migration: drop tables that are no longer part of the schema
+    private void dropLegacyTables(java.sql.Connection c) {
+        String[] stmts = {
+            "ALTER TABLE Coffee DROP FOREIGN KEY fk_coffee_batch",
+            "ALTER TABLE Coffee DROP COLUMN batch_id",
+            "ALTER TABLE Roasts DROP FOREIGN KEY fk_roasts_batch",
+            "ALTER TABLE Roasts DROP COLUMN batch_id",
+            "DROP TABLE IF EXISTS RoastBatch"
+        };
+        for (String sql : stmts) {
+            try { c.createStatement().executeUpdate(sql); }
+            catch (java.sql.SQLException ignored) {} // already done or column/key doesn't exist
+        }
     }
 
     public void openProf() {
@@ -177,7 +192,8 @@ public class SystemHandling {
         userIsAdmin = false;
         userIsEmployee = false;
         admin_page = null;
-        hideProf();
+        // only close the profile overlay if it's actually open
+        if (screen.getChildren().size() > 1) hideProf();
         Top.getLeft().getChildren().removeIf(n -> n instanceof Label);
         Top.refreshAuth();
         changePage(Page.HOME);
