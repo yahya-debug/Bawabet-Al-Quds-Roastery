@@ -222,8 +222,8 @@ public class Home_UI {
             ? "BUNDLE" : item.itemType;
         VBox card = Item_UI.makeProductCard(item.name, item.price, typeLabel, img);
 
-        if (selectedBranchId >= 0) {
-            Label qtyLbl = new Label("Qty: " + item.branchQuantity);
+        if (selectedBranchId >= 0 && (sys.isUserAdmin() || sys.isUserEmployee())) {
+            Label qtyLbl = new Label(String.format("%.3f kg", item.branchQuantity));
             qtyLbl.setFont(Font.font("Nunito", FontWeight.BOLD, 11));
             qtyLbl.setTextFill(Color.hsb(120, 0.7, 0.15, 1));
             qtyLbl.setPadding(new Insets(3, 8, 3, 8));
@@ -236,7 +236,6 @@ public class Home_UI {
             wrapper.setOnMouseClicked(e -> sys.openItemDetail(item));
             return wrapper;
         }
-
         card.setOnMouseClicked(e -> sys.openItemDetail(item));
         return card;
     }

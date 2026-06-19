@@ -7,6 +7,7 @@ import app.db_proj.ItemDAO.ItemStats;
 import app.db_proj.OrderDAO;
 import app.db_proj.PackageDAO;
 import app.db_proj.SystemHandling;
+import app.db_proj.WarehouseDAO;
 import app.db_proj.model.Item;
 import app.db_proj.model.Review;
 import javafx.geometry.Insets;
@@ -112,7 +113,10 @@ public class ItemDetailUI {
             ? buildPackageContentsPane(sys.getConn(), item.itemId)
             : buildReviewsPane(sys, item.itemId);
 
-        body.getChildren().addAll(top, sep, buildStockPane(sys.getConn(), item.itemId), bottomSection);
+        body.getChildren().addAll(top, sep);
+        if (sys.isUserAdmin() || sys.isUserEmployee())
+            body.getChildren().add(buildStockPane(sys, item.itemId));
+        body.getChildren().add(bottomSection);
 
         ScrollPane scroll = new ScrollPane(body);
         scroll.setFitToWidth(true);
@@ -179,10 +183,10 @@ public class ItemDetailUI {
         ItemStats stats = ItemDAO.getStats(sys.getConn(), item.itemId);
         HBox statsRow = buildStatsRow(stats);
 
-        // Add to cart controls (only for authenticated non-admin customers)
+        boolean isPkg = PackageDAO.isPackage(sys.getConn(), item.itemId);
         pane.getChildren().addAll(typeBadge, name, price, meta, statsRow);
         if (sys.isAuthenticated() && !sys.isUserAdmin()) {
-            pane.getChildren().add(buildCartControls(sys, item));
+            pane.getChildren().add(buildCartControls(sys, item, isPkg));
         }
 
         return pane;
@@ -212,80 +216,124 @@ public class ItemDetailUI {
         return l;
     }
 
-    private VBox buildCartControls(SystemHandling sys, Item item) {
+    private VBox buildCartControls(SystemHandling sys, Item item, boolean isPkg) {
         VBox box = new VBox(8);
         VBox.setMargin(box, new Insets(8, 0, 0, 0));
 
-        int currentQty = Cart_Logic.getCartQuantity(sys.getConn(), sys.getCurrentUserId(), item.itemId);
-        int[] qty = { currentQty > 0 ? currentQty : 1 };
+        double currentQty = Cart_Logic.getCartQuantity(sys.getConn(), sys.getCurrentUserId(), item.itemId);
 
-        String stepStyle = "-fx-background-color: hsb(35, 14%, 30%); -fx-background-radius: 7;"
-                         + "-fx-font-size: 18px; -fx-text-fill: #d4c0a0;"
-                         + "-fx-min-width: 36; -fx-min-height: 36;";
-        String stepHover = "-fx-background-color: hsb(35, 16%, 40%); -fx-background-radius: 7;"
-                         + "-fx-font-size: 18px; -fx-text-fill: #d4c0a0;"
-                         + "-fx-min-width: 36; -fx-min-height: 36;";
-
-        Button minusBtn = new Button("−");
-        minusBtn.setStyle(stepStyle); minusBtn.setCursor(Cursor.HAND);
-        minusBtn.setOnMouseEntered(e -> minusBtn.setStyle(stepHover));
-        minusBtn.setOnMouseExited(e -> minusBtn.setStyle(stepStyle));
-
-        Label qtyLbl = new Label(String.valueOf(qty[0]));
-        qtyLbl.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 18));
-        qtyLbl.setTextFill(Color.WHITE);
-        qtyLbl.setMinWidth(40);
-        qtyLbl.setAlignment(Pos.CENTER);
-
-        Button plusBtn = new Button("+");
-        plusBtn.setStyle(stepStyle); plusBtn.setCursor(Cursor.HAND);
-        plusBtn.setOnMouseEntered(e -> plusBtn.setStyle(stepHover));
-        plusBtn.setOnMouseExited(e -> plusBtn.setStyle(stepStyle));
-
-        HBox stepper = new HBox(8, minusBtn, qtyLbl, plusBtn);
-        stepper.setAlignment(Pos.CENTER_LEFT);
-
-        minusBtn.setOnAction(e -> {
-            if (qty[0] > 1) { qty[0]--; qtyLbl.setText(String.valueOf(qty[0])); }
-        });
-        plusBtn.setOnAction(e -> {
-            qty[0]++; qtyLbl.setText(String.valueOf(qty[0]));
-        });
-
-        boolean inCart = currentQty > 0;
         String addStyle    = "-fx-background-color: hsb(48, 100%, 92%); -fx-background-radius: 12; -fx-font-size: 16px; -fx-text-fill: black;";
         String addHover    = "-fx-background-color: hsb(48, 100%, 75%); -fx-background-radius: 12; -fx-font-size: 16px; -fx-text-fill: black;";
         String updateStyle = "-fx-background-color: hsb(200, 60%, 72%); -fx-background-radius: 12; -fx-font-size: 16px; -fx-text-fill: black;";
         String updateHover = "-fx-background-color: hsb(200, 60%, 55%); -fx-background-radius: 12; -fx-font-size: 16px; -fx-text-fill: black;";
 
+        boolean inCart = currentQty > 0;
         String[] btnNormal = { inCart ? updateStyle : addStyle };
         String[] btnHover  = { inCart ? updateHover : addHover };
 
-        if (inCart) {
-            Label note = new Label("Currently in cart: " + currentQty);
-            note.setFont(Font.font("Nunito", 13));
-            note.setTextFill(Color.hsb(120, 0.4, 0.68, 1));
-            box.getChildren().add(note);
-        }
-
-        Button actionBtn = new Button(inCart
-            ? "Update Cart  (" + currentQty + " in cart)"
-            : "+ Add to Cart");
+        Button actionBtn = new Button(inCart ? "Update Cart" : "+ Add to Cart");
         actionBtn.setStyle(btnNormal[0]);
         actionBtn.setFont(Font.font("Nunito", FontWeight.BOLD, 16));
         actionBtn.setMaxWidth(Double.MAX_VALUE);
         actionBtn.setCursor(Cursor.HAND);
         actionBtn.setOnMouseEntered(e -> actionBtn.setStyle(btnHover[0]));
         actionBtn.setOnMouseExited(e -> actionBtn.setStyle(btnNormal[0]));
-        actionBtn.setOnAction(e -> {
-            Cart_Logic.setCartQuantity(sys.getConn(), sys.getCurrentUserId(), item.itemId, qty[0], sys.getSelectedBranchId());
-            actionBtn.setText("✓  In Cart: " + qty[0]);
-            actionBtn.setStyle(updateStyle);
-            btnNormal[0] = updateStyle;
-            btnHover[0]  = updateHover;
-        });
 
-        box.getChildren().addAll(stepper, actionBtn);
+        if (isPkg) {
+            // ── Package: integer +/- stepper ──
+            int[] qty = { currentQty > 0 ? (int) currentQty : 1 };
+
+            String stepStyle = "-fx-background-color: hsb(35, 14%, 30%); -fx-background-radius: 7;"
+                             + "-fx-font-size: 18px; -fx-text-fill: #d4c0a0;"
+                             + "-fx-min-width: 36; -fx-min-height: 36;";
+            String stepHover = "-fx-background-color: hsb(35, 16%, 40%); -fx-background-radius: 7;"
+                             + "-fx-font-size: 18px; -fx-text-fill: #d4c0a0;"
+                             + "-fx-min-width: 36; -fx-min-height: 36;";
+
+            Button minusBtn = new Button("−");
+            minusBtn.setStyle(stepStyle); minusBtn.setCursor(Cursor.HAND);
+            minusBtn.setOnMouseEntered(e -> minusBtn.setStyle(stepHover));
+            minusBtn.setOnMouseExited(e -> minusBtn.setStyle(stepStyle));
+
+            Label qtyLbl = new Label(String.valueOf(qty[0]));
+            qtyLbl.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 18));
+            qtyLbl.setTextFill(Color.WHITE);
+            qtyLbl.setMinWidth(40);
+            qtyLbl.setAlignment(Pos.CENTER);
+
+            Button plusBtn = new Button("+");
+            plusBtn.setStyle(stepStyle); plusBtn.setCursor(Cursor.HAND);
+            plusBtn.setOnMouseEntered(e -> plusBtn.setStyle(stepHover));
+            plusBtn.setOnMouseExited(e -> plusBtn.setStyle(stepStyle));
+
+            minusBtn.setOnAction(e -> { if (qty[0] > 1) { qty[0]--; qtyLbl.setText(String.valueOf(qty[0])); } });
+            plusBtn.setOnAction(e ->  { qty[0]++; qtyLbl.setText(String.valueOf(qty[0])); });
+
+            HBox stepper = new HBox(8, minusBtn, qtyLbl, plusBtn);
+            stepper.setAlignment(Pos.CENTER_LEFT);
+
+            actionBtn.setOnAction(e -> {
+                Cart_Logic.setCartQuantity(sys.getConn(), sys.getCurrentUserId(),
+                    item.itemId, qty[0], sys.getSelectedBranchId());
+                actionBtn.setText("✓  In Cart: " + qty[0]);
+                actionBtn.setStyle(updateStyle);
+                btnNormal[0] = updateStyle; btnHover[0] = updateHover;
+            });
+
+            box.getChildren().addAll(stepper, actionBtn);
+
+        } else {
+            // ── KG item: decimal text field ──
+            javafx.scene.control.TextField kgField = new javafx.scene.control.TextField(
+                currentQty > 0 ? String.format("%.3f", currentQty) : "");
+            kgField.setPromptText("Enter kg (e.g. 0.500)");
+            kgField.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 16));
+            kgField.setStyle(
+                "-fx-background-color: hsb(35, 14%, 28%);" +
+                "-fx-text-fill: white;" +
+                "-fx-prompt-text-fill: hsb(30,10%,45%);" +
+                "-fx-background-radius: 8;" +
+                "-fx-padding: 6 12 6 12;");
+            kgField.setMaxWidth(160);
+
+            Label unitLbl = new Label("kg");
+            unitLbl.setFont(Font.font("Nunito", FontWeight.BOLD, 16));
+            unitLbl.setTextFill(Color.hsb(30, 0.12, 0.65, 1));
+
+            HBox kgRow = new HBox(8, kgField, unitLbl);
+            kgRow.setAlignment(Pos.CENTER_LEFT);
+
+            Label errLbl = new Label();
+            errLbl.setFont(Font.font("Nunito", 13));
+            errLbl.setTextFill(Color.hsb(0, 0.7, 0.75, 1));
+            errLbl.setVisible(false);
+
+            actionBtn.setOnAction(e -> {
+                errLbl.setVisible(false);
+                String raw = kgField.getText().trim().replace(",", ".");
+                double kg;
+                try {
+                    kg = Double.parseDouble(raw);
+                } catch (NumberFormatException ex) {
+                    errLbl.setText("Enter a valid number (e.g. 0.500)");
+                    errLbl.setVisible(true);
+                    return;
+                }
+                if (kg <= 0) {
+                    errLbl.setText("Quantity must be greater than 0");
+                    errLbl.setVisible(true);
+                    return;
+                }
+                Cart_Logic.setCartQuantity(sys.getConn(), sys.getCurrentUserId(),
+                    item.itemId, kg, sys.getSelectedBranchId());
+                actionBtn.setText(String.format("✓  In Cart: %.3f kg", kg));
+                actionBtn.setStyle(updateStyle);
+                btnNormal[0] = updateStyle; btnHover[0] = updateHover;
+            });
+
+            box.getChildren().addAll(kgRow, errLbl, actionBtn);
+        }
+
         return box;
     }
 
@@ -450,19 +498,41 @@ public class ItemDetailUI {
 
     // ── Branch stock levels ────────────────────────────────────────────────────
 
-    private HBox buildStockPane(java.sql.Connection conn, int itemId) {
-        HBox pane = new HBox(10);
+    private HBox buildStockPane(SystemHandling sys, int itemId) {
+        HBox pane = new HBox(16);
         pane.setPadding(new Insets(0, 28, 14, 28));
         pane.setAlignment(Pos.CENTER_LEFT);
 
-        int total = Admin_Logic.getTotalStock(conn, itemId);
-        Label stockLabel = new Label("Stock:  " + total + " units across all branches");
-        stockLabel.setFont(Font.font("Nunito", 14));
-        stockLabel.setTextFill(total > 0
+        int selectedBranch = sys.getSelectedBranchId();
+
+        // branch chip
+        double branchQty = selectedBranch > 0
+            ? Admin_Logic.getBranchItemStock(sys.getConn(), selectedBranch, itemId)
+            : Admin_Logic.getTotalBranchStock(sys.getConn(), itemId);
+        String branchLabel = selectedBranch > 0
+            ? String.format("Branch stock: %.3f kg", branchQty)
+            : String.format("All branches: %.3f kg", branchQty);
+        Label branchChip = stockChip(branchLabel, branchQty > 0
             ? Color.hsb(120, 0.5, 0.72, 1)
-            : Color.hsb(0, 0.7, 0.75, 1));
-        pane.getChildren().add(stockLabel);
+            : Color.hsb(0, 0.65, 0.75, 1));
+
+        // warehouse chip
+        double warehouseQty = WarehouseDAO.getTotalStock(sys.getConn(), itemId);
+        Label warehouseChip = stockChip(String.format("Warehouses: %.3f kg", warehouseQty),
+            Color.hsb(200, 0.55, 0.72, 1));
+
+        pane.getChildren().addAll(branchChip, warehouseChip);
         return pane;
+    }
+
+    private Label stockChip(String text, Color fg) {
+        Label l = new Label(text);
+        l.setFont(Font.font("Nunito", FontWeight.BOLD, 13));
+        l.setTextFill(fg);
+        l.setPadding(new Insets(4, 12, 4, 12));
+        l.setBackground(new Background(new BackgroundFill(
+            fg.deriveColor(0, 1, 1, 0.15), new CornerRadii(8), null)));
+        return l;
     }
 
     // ── Package contents (instead of reviews for packages) ─────────────────────

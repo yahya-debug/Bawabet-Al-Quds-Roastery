@@ -9,15 +9,15 @@ public class Item {
     public final String imagePath;
     public final Integer supplierId;
     public final String supplierName;
-    public final int branchQuantity; // 0 when not branch-specific
+    public final double branchQuantity; // 0 when not branch-specific
 
     public Item(int itemId, String name, double price, double wholesalePrice,
                 String itemType, String imagePath, Integer supplierId, String supplierName) {
-        this(itemId, name, price, wholesalePrice, itemType, imagePath, supplierId, supplierName, 0);
+        this(itemId, name, price, wholesalePrice, itemType, imagePath, supplierId, supplierName, 0.0);
     }
 
     public Item(int itemId, String name, double price, double wholesalePrice,
-                String itemType, String imagePath, Integer supplierId, String supplierName, int branchQuantity) {
+                String itemType, String imagePath, Integer supplierId, String supplierName, double branchQuantity) {
         this.itemId = itemId;
         this.name = name;
         this.price = price;

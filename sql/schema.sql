@@ -297,4 +297,26 @@ CREATE TABLE IF NOT EXISTS Review (
     REFERENCES Item   (item_id)   ON DELETE CASCADE
 );
 
+-- ── Warehouse ────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS Warehouse (
+  warehouse_id INT          NOT NULL AUTO_INCREMENT,
+  location_id  INT          NOT NULL,
+  name         VARCHAR(100) NOT NULL,
+  PRIMARY KEY (warehouse_id),
+  CONSTRAINT fk_warehouse_location FOREIGN KEY (location_id)
+    REFERENCES Location (location_id) ON DELETE NO ACTION ON UPDATE NO ACTION
+);
+
+CREATE TABLE IF NOT EXISTS WarehouseInventory (
+  warehouse_id INT NOT NULL,
+  item_id      INT NOT NULL,
+  quantity     INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (warehouse_id, item_id),
+  CONSTRAINT fk_wi_warehouse FOREIGN KEY (warehouse_id)
+    REFERENCES Warehouse (warehouse_id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_wi_item FOREIGN KEY (item_id)
+    REFERENCES Item (item_id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
 SET FOREIGN_KEY_CHECKS = 1;

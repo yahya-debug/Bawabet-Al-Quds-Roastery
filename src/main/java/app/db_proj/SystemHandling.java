@@ -53,8 +53,9 @@ public class SystemHandling {
 
         Cart_Logic.ensureCartTable(conn);
         Admin_Logic.ensureItemImageColumn(conn);
-        Admin_Logic.ensureSupplierTable(conn);
+        Admin_Logic.ensureSupplierTable(conn); // also calls ensureDefaultSupplier internally
         RoastBatchDAO.ensureTables(conn);
+        WarehouseDAO.ensureTables(conn);
 
         // wire the nav-bar search to the home page item filter
         Top.setSearchAction(q -> home_page.search(q));

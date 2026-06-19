@@ -6,6 +6,7 @@ import app.db_proj.OrderDAO;
 import app.db_proj.PackageDAO;
 import app.db_proj.RoastBatchDAO;
 import app.db_proj.SystemHandling;
+import app.db_proj.WarehouseDAO;
 import app.db_proj.model.Order;
 import app.db_proj.model.OrderItem;
 import javafx.collections.FXCollections;
@@ -40,7 +41,8 @@ public class Admin_UI {
 
     // section roots
     private VBox branchSection, employeesSection, usersSection, itemsSection,
-                 suppliersSection, ordersSection, reportsSection, packagesSection, roastBatchSection;
+                 suppliersSection, ordersSection, reportsSection, packagesSection,
+                 roastBatchSection, warehouseSection;
 
     // card list containers
     private VBox branch_cards_box;
@@ -52,6 +54,7 @@ public class Admin_UI {
     private VBox order_cards_box;
     private VBox package_cards_box;
     private VBox roast_batch_cards_box;
+    private VBox warehouse_cards_box;
 
     // branch section detail box (for admin's own branch)
     private VBox branch_detail_box;
@@ -102,8 +105,8 @@ public class Admin_UI {
 
         String[] names;
         if (isFullAdmin) {
-            names = new String[]{"Branch", "Employees", "Users", "Items", "Suppliers", "Orders", "Reports", "Packages", "Roast Batches"};
-            sectionIndices = new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8};
+            names = new String[]{"Branch", "Employees", "Users", "Items", "Suppliers", "Orders", "Reports", "Packages", "Roast Batches", "Warehouses"};
+            sectionIndices = new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
         } else {
             names = new String[]{"Branch", "Employees", "Suppliers", "Orders"};
             sectionIndices = new int[]{0, 1, 4, 5};
@@ -120,7 +123,24 @@ public class Admin_UI {
             btns.getChildren().add(b);
         }
 
-        left_nav.getChildren().addAll(title, sep, btns);
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        Button logoutBtn = new Button("← Log Out");
+        logoutBtn.setFont(Font.font("Nunito", FontWeight.BOLD, 15));
+        logoutBtn.setMaxWidth(Double.MAX_VALUE);
+        logoutBtn.setPrefHeight(44);
+        logoutBtn.setAlignment(Pos.CENTER_LEFT);
+        logoutBtn.setPadding(new Insets(0, 0, 0, 14));
+        logoutBtn.setCursor(Cursor.HAND);
+        logoutBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: hsb(0,55%,72%);");
+        logoutBtn.setOnMouseEntered(e -> logoutBtn.setStyle(
+            "-fx-background-color: hsb(0,55%,35%,0.5); -fx-background-radius: 8; -fx-text-fill: hsb(0,55%,88%);"));
+        logoutBtn.setOnMouseExited(e -> logoutBtn.setStyle(
+            "-fx-background-color: transparent; -fx-text-fill: hsb(0,55%,72%);"));
+        logoutBtn.setOnAction(e -> sys.logout());
+
+        left_nav.getChildren().addAll(title, sep, btns, spacer, logoutBtn);
     }
 
     private Button makeNavBtn(String text) {
@@ -169,10 +189,12 @@ public class Admin_UI {
             case 6 -> refresh_reports();
             case 7 -> refresh_packages();
             case 8 -> refresh_roast_batches();
+            case 9 -> refresh_warehouses();
         }
 
         VBox[] sections = {branchSection, employeesSection, usersSection, itemsSection,
-                           suppliersSection, ordersSection, reportsSection, packagesSection, roastBatchSection};
+                           suppliersSection, ordersSection, reportsSection, packagesSection,
+                           roastBatchSection, warehouseSection};
         main_content.getChildren().setAll(sections[sectionIdx]);
         VBox.setVgrow(sections[sectionIdx], Priority.ALWAYS);
     }
@@ -194,6 +216,7 @@ public class Admin_UI {
         build_reports_section();
         build_packages_section();
         build_roast_batches_section();
+        build_warehouse_section();
     }
 
     // ── BRANCH SECTION ───────────────────────────────────────────────────────
@@ -540,7 +563,7 @@ public class Admin_UI {
             Admin_Logic.ItemRow sel = itemCombo.getValue();
             if (sel == null || addQty.getText().isBlank()) { addErr.setVisible(true); return; }
             try {
-                int qty = Integer.parseInt(addQty.getText().trim());
+                double qty = Double.parseDouble(addQty.getText().trim().replace(",", "."));
                 if (qty <= 0) { addErr.setVisible(true); return; }
                 Admin_Logic.setStock(sys.getConn(), b.branchId, sel.getItemId(), qty);
                 addOk.setVisible(true);
@@ -866,9 +889,10 @@ public class Admin_UI {
         price.setTextFill(Color.hsb(48, 1, 0.92, 1));
 
         // Stock at admin's branch
-        int branchStock = adminBranchId >= 0
+        double branchStock = adminBranchId >= 0
             ? Admin_Logic.getTotalStock(sys.getConn(), row.getItemId()) : -1;
-        Label stockLbl = new Label(branchStock >= 0 ? "Stock: " + branchStock : "");
+        Label stockLbl = new Label(branchStock >= 0
+            ? String.format("Stock: %.3f kg", branchStock) : "");
         stockLbl.setFont(Font.font("Nunito", 13));
         stockLbl.setTextFill(branchStock > 0
             ? Color.hsb(120, 0.5, 0.70, 1) : Color.hsb(0, 0.65, 0.72, 1));
@@ -880,14 +904,24 @@ public class Admin_UI {
                                 Color.hsb(120, 0.50, 0.72, 1));
         typeBadge.setTextFill(Color.BLACK);
 
-        // Supplier sub-label
         if (row.getSupplierName() != null) {
             Label sup = cardSub("by " + row.getSupplierName());
             info.getChildren().add(sup);
         }
 
+        Button deleteBtn = new Button("🗑");
+        deleteBtn.setStyle("-fx-background-color: hsb(0,55%,60%,0.7); -fx-background-radius: 7; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 4 8 4 8;");
+        deleteBtn.setCursor(Cursor.HAND);
+        deleteBtn.setOnMouseEntered(ev -> deleteBtn.setStyle("-fx-background-color: hsb(0,70%,70%); -fx-background-radius: 7; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 4 8 4 8;"));
+        deleteBtn.setOnMouseExited(ev -> deleteBtn.setStyle("-fx-background-color: hsb(0,55%,60%,0.7); -fx-background-radius: 7; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 4 8 4 8;"));
+        deleteBtn.setOnAction(ev -> {
+            ev.consume();
+            boolean ok = Admin_Logic.deleteItem(sys.getConn(), row.getItemId());
+            if (ok) refresh_items();
+        });
+
         card.setOnMouseClicked(e -> showFormOverlay(make_item_edit_form(row)));
-        card.getChildren().addAll(accent, info, typeBadge);
+        card.getChildren().addAll(accent, info, typeBadge, deleteBtn);
         return card;
     }
 
@@ -948,10 +982,10 @@ public class Admin_UI {
         stockHead.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
         stockHead.setTextFill(Color.hsb(30, 0.12, 0.72, 1));
 
-        int currentStock = adminBranchId >= 0
+        double currentStock = adminBranchId >= 0
             ? Admin_Logic.getTotalStock(sys.getConn(), row.getItemId()) : 0;
-        TextField stockField = formField("Quantity");
-        stockField.setText(String.valueOf(currentStock));
+        TextField stockField = formField("Quantity (kg)");
+        stockField.setText(currentStock > 0 ? String.format("%.3f", currentStock) : "");
 
         Button saveBtn = submitBtn("Save Changes");
         saveBtn.setOnAction(e -> {
@@ -969,7 +1003,7 @@ public class Admin_UI {
             // update branch stock if admin has a branch
             if (adminBranchId >= 0 && !stockField.getText().isBlank()) {
                 try {
-                    int qty = Integer.parseInt(stockField.getText().trim());
+                    double qty = Double.parseDouble(stockField.getText().trim().replace(",", "."));
                     Admin_Logic.setStock(sys.getConn(), adminBranchId, row.getItemId(), qty);
                 } catch (NumberFormatException ignored) {}
             }
@@ -2051,6 +2085,267 @@ public class Admin_UI {
             nameField, priceField, descField,
             sep, itemsHead, itemCombo, qtyField, addErr, addItemBtn, pendingBox,
             submit);
+        return form;
+    }
+
+    // ── WAREHOUSE SECTION ────────────────────────────────────────────────────
+
+    private void build_warehouse_section() {
+        warehouseSection = new VBox(12);
+        warehouseSection.setPadding(new Insets(14, 0, 14, 14));
+        VBox.setVgrow(warehouseSection, Priority.ALWAYS);
+
+        HBox header = sectionHeader("Warehouses", e -> showFormOverlay(make_warehouse_form()));
+        warehouse_cards_box = new VBox(10);
+        warehouse_cards_box.setPadding(new Insets(2, 0, 10, 0));
+
+        warehouseSection.getChildren().addAll(header, cardScroll(warehouse_cards_box));
+    }
+
+    private void refresh_warehouses() {
+        if (warehouse_cards_box == null) return;
+        warehouse_cards_box.getChildren().clear();
+        List<WarehouseDAO.WarehouseRow> rows = WarehouseDAO.getAll(sys.getConn());
+        if (rows.isEmpty()) {
+            warehouse_cards_box.getChildren().add(emptyLabel("No warehouses yet"));
+            return;
+        }
+        for (WarehouseDAO.WarehouseRow w : rows)
+            warehouse_cards_box.getChildren().add(makeWarehouseCard(w));
+    }
+
+    private HBox makeWarehouseCard(WarehouseDAO.WarehouseRow w) {
+        HBox card = new HBox(14);
+        card.setPadding(new Insets(14, 18, 14, 18));
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.setCursor(Cursor.HAND);
+        card.setBackground(new Background(new BackgroundFill(
+            Color.hsb(35, 0.14, 0.30, 1), new CornerRadii(10), null)));
+        card.setOnMouseEntered(e -> card.setBackground(new Background(new BackgroundFill(
+            Color.hsb(35, 0.17, 0.38, 1), new CornerRadii(10), null))));
+        card.setOnMouseExited(e -> card.setBackground(new Background(new BackgroundFill(
+            Color.hsb(35, 0.14, 0.30, 1), new CornerRadii(10), null))));
+
+        VBox info = new VBox(4);
+        HBox.setHgrow(info, Priority.ALWAYS);
+
+        Label name = new Label(w.name);
+        name.setFont(Font.font("Nunito", FontWeight.BOLD, 16));
+        name.setTextFill(Color.WHITE);
+
+        Label loc = new Label(w.street + ", " + w.city + "  " + w.zip);
+        loc.setFont(Font.font("Nunito", 13));
+        loc.setTextFill(Color.hsb(30, 0.12, 0.65, 1));
+
+        info.getChildren().addAll(name, loc);
+
+        List<WarehouseDAO.StockRow> stock = WarehouseDAO.getStock(sys.getConn(), w.warehouseId);
+        Label items = new Label(stock.size() + " item type" + (stock.size() == 1 ? "" : "s"));
+        items.setFont(Font.font("Nunito", FontWeight.BOLD, 13));
+        items.setTextFill(Color.hsb(48, 1, 0.88, 1));
+
+        card.getChildren().addAll(info, items);
+        card.setOnMouseClicked(e -> showWarehouseDetail(w));
+        return card;
+    }
+
+    private void showWarehouseDetail(WarehouseDAO.WarehouseRow w) {
+        StackPane overlay = new StackPane();
+        overlay.setBackground(new Background(new BackgroundFill(Color.hsb(0, 0, 0, 0.65), null, null)));
+        overlay.setOnMouseClicked(e -> { if (e.getTarget() == overlay) screenRoot.getChildren().remove(overlay); });
+
+        VBox modal = new VBox(0);
+        modal.setMaxWidth(700);
+        modal.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.20, 0.22, 1), new CornerRadii(16), null)));
+        modal.setEffect(new DropShadow(28, 0, 8, Color.hsb(0, 0, 0, 0.60)));
+        StackPane.setMargin(modal, new Insets(40));
+
+        // header
+        HBox hdr = new HBox();
+        hdr.setPadding(new Insets(14, 18, 14, 20));
+        hdr.setAlignment(Pos.CENTER_LEFT);
+        hdr.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.22, 0.17, 1), new CornerRadii(16, 16, 0, 0, false), null)));
+        Label title = new Label(w.name);
+        title.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 18));
+        title.setTextFill(Color.hsb(48, 1, 0.92, 1));
+        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
+        Button closeBtn = new Button("✕");
+        closeBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #7a6a58; -fx-font-size: 16px;");
+        closeBtn.setCursor(Cursor.HAND);
+        closeBtn.setOnAction(e -> screenRoot.getChildren().remove(overlay));
+        hdr.getChildren().addAll(title, sp, closeBtn);
+
+        // body
+        VBox body = new VBox(12);
+        body.setPadding(new Insets(16, 20, 20, 20));
+
+        Label locLbl = new Label(w.street + ", " + w.city + "  " + w.zip);
+        locLbl.setFont(Font.font("Nunito", 13));
+        locLbl.setTextFill(Color.hsb(30, 0.12, 0.60, 1));
+        body.getChildren().add(locLbl);
+
+        // stock list (rebuilt inside VBox so Transfer can refresh)
+        VBox stockBox = new VBox(8);
+        Runnable reloadStock = () -> {
+            stockBox.getChildren().clear();
+            Label sh = new Label("Inventory");
+            sh.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+            sh.setTextFill(Color.hsb(30, 0.12, 0.72, 1));
+            stockBox.getChildren().add(sh);
+            List<WarehouseDAO.StockRow> stock = WarehouseDAO.getStock(sys.getConn(), w.warehouseId);
+            if (stock.isEmpty()) {
+                Label none = new Label("No items in this warehouse");
+                none.setFont(Font.font("Nunito", 13));
+                none.setTextFill(Color.hsb(30, 0.10, 0.50, 1));
+                stockBox.getChildren().add(none);
+            } else {
+                for (WarehouseDAO.StockRow sr : stock)
+                    stockBox.getChildren().add(makeWarehouseStockRow(sr, w, overlay));
+            }
+        };
+        reloadStock.run();
+        body.getChildren().add(stockBox);
+
+        // ── Set item qty form ──
+        body.getChildren().add(new Separator());
+        Label setHead = new Label("Set Item Quantity");
+        setHead.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+        setHead.setTextFill(Color.hsb(48, 1, 0.88, 1));
+
+        ComboBox<Admin_Logic.ItemRow> itemCb = new ComboBox<>();
+        itemCb.setStyle("-fx-background-color: hsb(35,14%,28%); -fx-background-radius: 8;");
+        itemCb.setMaxWidth(Double.MAX_VALUE);
+        itemCb.setPromptText("Select item");
+        List<Admin_Logic.ItemRow> allItems = Admin_Logic.getItems(sys.getConn());
+        itemCb.getItems().addAll(allItems);
+        itemCb.setConverter(new javafx.util.StringConverter<>() {
+            public String toString(Admin_Logic.ItemRow r)   { return r == null ? "" : "#" + r.getItemId() + " – " + r.getName(); }
+            public Admin_Logic.ItemRow fromString(String s) { return null; }
+        });
+
+        TextField qtyTf = formField("Quantity");
+        Button setBtn = submitBtn("Set");
+        Label setMsg = new Label(); setMsg.setFont(Font.font("Nunito", 13)); setMsg.setTextFill(Color.hsb(120, 0.5, 0.72, 1)); setMsg.setVisible(false);
+        setBtn.setOnAction(e -> {
+            if (itemCb.getValue() == null || qtyTf.getText().isBlank()) return;
+            try {
+                int qty = Integer.parseInt(qtyTf.getText().trim());
+                WarehouseDAO.setStock(sys.getConn(), w.warehouseId, itemCb.getValue().getItemId(), qty);
+                setMsg.setText("Updated."); setMsg.setVisible(true);
+                qtyTf.clear(); itemCb.setValue(null);
+                reloadStock.run();
+            } catch (NumberFormatException ex) { setMsg.setText("Invalid qty"); setMsg.setTextFill(Color.hsb(0,0.7,0.75,1)); setMsg.setVisible(true); }
+        });
+        body.getChildren().addAll(setHead, itemCb, qtyTf, setBtn, setMsg);
+
+        // ── Transfer to Branch form ──
+        body.getChildren().add(new Separator());
+        Label trHead = new Label("Transfer to Branch");
+        trHead.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+        trHead.setTextFill(Color.hsb(200, 0.6, 0.80, 1));
+
+        ComboBox<Admin_Logic.BranchRow> branchCb = new ComboBox<>();
+        branchCb.setStyle("-fx-background-color: hsb(35,14%,28%); -fx-background-radius: 8;");
+        branchCb.setMaxWidth(Double.MAX_VALUE);
+        branchCb.setPromptText("Select branch");
+        branchCb.getItems().addAll(Admin_Logic.getBranches(sys.getConn()));
+
+        ComboBox<Admin_Logic.ItemRow> trItemCb = new ComboBox<>();
+        trItemCb.setStyle("-fx-background-color: hsb(35,14%,28%); -fx-background-radius: 8;");
+        trItemCb.setMaxWidth(Double.MAX_VALUE);
+        trItemCb.setPromptText("Select item");
+        trItemCb.getItems().addAll(allItems);
+        trItemCb.setConverter(itemCb.getConverter());
+
+        TextField trQtyTf = formField("Quantity to transfer");
+        Button trBtn = submitBtn("Transfer");
+        Label trMsg = new Label(); trMsg.setFont(Font.font("Nunito", 13)); trMsg.setVisible(false);
+        trBtn.setOnAction(e -> {
+            if (branchCb.getValue() == null || trItemCb.getValue() == null || trQtyTf.getText().isBlank()) return;
+            try {
+                int qty = Integer.parseInt(trQtyTf.getText().trim());
+                String result = WarehouseDAO.transferToBranch(sys.getConn(), w.warehouseId,
+                    branchCb.getValue().branchId, trItemCb.getValue().getItemId(), qty);
+                switch (result) {
+                    case "ok"           -> { trMsg.setTextFill(Color.hsb(120,0.5,0.72,1)); trMsg.setText("Transferred " + qty + " units."); }
+                    case "insufficient" -> { trMsg.setTextFill(Color.hsb(0,0.7,0.75,1)); trMsg.setText("Not enough stock in warehouse."); }
+                    default             -> { trMsg.setTextFill(Color.hsb(0,0.7,0.75,1)); trMsg.setText("Transfer failed."); }
+                }
+                trMsg.setVisible(true);
+                trQtyTf.clear(); trItemCb.setValue(null); branchCb.setValue(null);
+                reloadStock.run();
+                refresh_warehouses();
+            } catch (NumberFormatException ex) { trMsg.setTextFill(Color.hsb(0,0.7,0.75,1)); trMsg.setText("Invalid qty"); trMsg.setVisible(true); }
+        });
+        body.getChildren().addAll(trHead, branchCb, trItemCb, trQtyTf, trBtn, trMsg);
+
+        ScrollPane scroll = new ScrollPane(body);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setMaxHeight(560);
+        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+
+        modal.getChildren().addAll(hdr, scroll);
+        overlay.getChildren().add(modal);
+        screenRoot.getChildren().add(overlay);
+    }
+
+    private HBox makeWarehouseStockRow(WarehouseDAO.StockRow sr, WarehouseDAO.WarehouseRow w, StackPane overlay) {
+        HBox row = new HBox(10);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(8, 12, 8, 12));
+        row.setBackground(new Background(new BackgroundFill(Color.hsb(35, 0.14, 0.27, 1), new CornerRadii(8), null)));
+
+        Label name = new Label(sr.itemName);
+        name.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+        name.setTextFill(Color.WHITE);
+        HBox.setHgrow(name, Priority.ALWAYS);
+
+        Label qtyBadge = new Label(String.valueOf(sr.quantity));
+        qtyBadge.setFont(Font.font("Nunito", FontWeight.BOLD, 13));
+        qtyBadge.setTextFill(sr.quantity > 0 ? Color.hsb(120, 0.6, 0.25, 1) : Color.hsb(0, 0.7, 0.75, 1));
+        qtyBadge.setPadding(new Insets(2, 10, 2, 10));
+        qtyBadge.setBackground(new Background(new BackgroundFill(
+            sr.quantity > 0 ? Color.hsb(120, 0.55, 0.78, 1) : Color.hsb(0, 0.55, 0.78, 1),
+            new CornerRadii(6), null)));
+
+        row.getChildren().addAll(name, qtyBadge);
+        return row;
+    }
+
+    private VBox make_warehouse_form() {
+        VBox form = new VBox(10);
+        form.setPadding(new Insets(18));
+
+        Label title = new Label("Add Warehouse");
+        title.setFont(Font.font("Adwaita Mono", FontWeight.BOLD, 22));
+        title.setTextFill(Color.hsb(48, 1, 0.92, 1));
+
+        TextField nameF   = formField("Warehouse name");
+        TextField streetF = formField("Street");
+        TextField cityF   = formField("City");
+        TextField zipF    = formField("ZIP");
+
+        Label ok = new Label("Warehouse added.");
+        ok.setFont(Font.font("Nunito", 13)); ok.setTextFill(Color.hsb(120, 0.5, 0.72, 1)); ok.setVisible(false);
+        Label err = new Label("Error adding warehouse.");
+        err.setFont(Font.font("Nunito", 13)); err.setTextFill(Color.hsb(0, 0.7, 0.75, 1)); err.setVisible(false);
+
+        Button submit = submitBtn("Add Warehouse");
+        submit.setOnAction(e -> {
+            ok.setVisible(false); err.setVisible(false);
+            String result = WarehouseDAO.addWarehouse(sys.getConn(),
+                nameF.getText().trim(), streetF.getText().trim(),
+                cityF.getText().trim(), zipF.getText().trim());
+            if ("ok".equals(result)) {
+                ok.setVisible(true);
+                nameF.clear(); streetF.clear(); cityF.clear(); zipF.clear();
+                refresh_warehouses();
+            } else {
+                err.setVisible(true);
+            }
+        });
+        form.getChildren().addAll(title, nameF, streetF, cityF, zipF, ok, err, submit);
         return form;
     }
 

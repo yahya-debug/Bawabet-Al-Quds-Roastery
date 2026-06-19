@@ -1,0 +1,246 @@
+============================================================
+ Bawabet Al-Quds — Entity Relationship Diagram (text)
+============================================================
+
+────────────────────────────────────────────────────────────
+ ENTITIES & ATTRIBUTES
+────────────────────────────────────────────────────────────
+
+Location
+  PK  location_id  INT AUTO_INCREMENT
+      street       VARCHAR(100)
+      city         VARCHAR(45)
+      zip          VARCHAR(45)
+
+Person
+  PK  person_id    INT AUTO_INCREMENT
+      name         VARCHAR(45)
+      email        VARCHAR(45)  UNIQUE
+      password     VARCHAR(100)
+
+Branch
+  PK  branch_id    INT AUTO_INCREMENT
+  FK  location_id  → Location.location_id
+      branch_name  VARCHAR(45)
+
+Customer  (sub-type of Person)
+  PK/FK  person_id   → Person.person_id
+         type        VARCHAR(45)   ('Individual' | 'Business')
+  FK     location_id → Location.location_id  (nullable)
+
+Individual  (sub-type of Customer)
+  PK/FK  person_id   → Customer.person_id
+         phone       VARCHAR(45)
+
+Business  (sub-type of Customer)
+  PK/FK  person_id   → Customer.person_id
+         company     VARCHAR(100)
+         vat_number  VARCHAR(45)
+
+Admin
+  PK/FK  person_id   → Person.person_id
+  FK     branch_id   → Branch.branch_id  (nullable — null = full admin)
+
+Employee
+  PK/FK  person_id   → Person.person_id
+  FK     branch_id   → Branch.branch_id
+
+Supplier
+  PK  supplier_id  INT AUTO_INCREMENT
+      name         VARCHAR(100)
+      contact      VARCHAR(100)
+  NOTE: "Bawabet Al-Quds" is the default supplier inserted at startup.
+
+Item
+  PK  item_id      INT AUTO_INCREMENT
+  FK  supplier_id  → Supplier.supplier_id
+      name         VARCHAR(100)
+      price        DECIMAL(10,2)
+      item_type    VARCHAR(45)   ('Coffee' | 'Spice' | 'Package' | …)
+      image_path   VARCHAR(255)
+
+Coffee  (sub-type of Item)
+  PK/FK  item_id        → Item.item_id
+         origin         VARCHAR(100)
+         roast_level    VARCHAR(45)
+
+Spice  (sub-type of Item)
+  PK/FK  item_id        → Item.item_id
+         spice_type     VARCHAR(100)
+
+Package  (sub-type of Item — groups other items)
+  PK/FK  package_id     → Item.item_id
+
+PackageItem  (items inside a package)
+  PK  (package_id, item_id)
+  FK  package_id  → Package.package_id
+  FK  item_id     → Item.item_id
+      quantity     INT
+
+SupplierItem  (which suppliers supply which items)
+  PK  (supplier_id, item_id)
+  FK  supplier_id  → Supplier.supplier_id
+  FK  item_id      → Item.item_id
+      wholesale_price  DECIMAL(10,2)
+
+BranchInventory  (stock of an item at a specific branch)
+  PK  (branch_id, item_id)
+  FK  branch_id  → Branch.branch_id
+  FK  item_id    → Item.item_id
+      quantity   INT
+
+Warehouse
+  PK  warehouse_id  INT AUTO_INCREMENT
+  FK  location_id   → Location.location_id
+      name          VARCHAR(100)
+
+WarehouseInventory  (stock of an item at a specific warehouse)
+  PK  (warehouse_id, item_id)
+  FK  warehouse_id  → Warehouse.warehouse_id
+  FK  item_id       → Item.item_id
+      quantity      INT
+
+RoastBatch
+  PK  batch_id       INT AUTO_INCREMENT
+  FK  branch_id      → Branch.branch_id
+  FK  item_id        → Item.item_id
+      roast_date     DATE
+      kg_green       DECIMAL(10,2)
+      kg_roasted     DECIMAL(10,2)
+      roast_level    VARCHAR(45)
+      item_type      VARCHAR(45)
+
+Cart
+  PK  (person_id, item_id)
+  FK  person_id  → Person.person_id
+  FK  item_id    → Item.item_id
+  FK  branch_id  → Branch.branch_id  (which branch this cart line is from)
+      quantity   INT
+
+Order
+  PK  order_id     INT AUTO_INCREMENT
+  FK  person_id    → Person.person_id
+      order_date   DATETIME
+      total_price  DECIMAL(10,2)
+      status       VARCHAR(45)
+
+OrderItem
+  PK  (order_id, item_id)
+  FK  order_id  → Order.order_id
+  FK  item_id   → Item.item_id
+      quantity   INT
+      unit_price DECIMAL(10,2)
+
+Delivery
+  PK  delivery_id   INT AUTO_INCREMENT
+  FK  order_id      → Order.order_id
+  FK  employee_id   → Employee.person_id  (employee of the fulfilling branch)
+      status        VARCHAR(45)
+      delivery_date DATE
+
+Payment
+  PK  payment_id    INT AUTO_INCREMENT
+  FK  order_id      → Order.order_id
+      amount        DECIMAL(10,2)
+      method        VARCHAR(45)
+      payment_date  DATETIME
+
+Discount
+  PK  discount_id   INT AUTO_INCREMENT
+  FK  item_id       → Item.item_id  (nullable — null = store-wide)
+      code          VARCHAR(45)  UNIQUE
+      percent       DECIMAL(5,2)
+      expiry_date   DATE
+
+Review
+  PK  review_id     INT AUTO_INCREMENT
+  FK  person_id     → Person.person_id
+  FK  item_id       → Item.item_id
+      rating        INT  (1–5)
+      comment       TEXT
+      review_date   DATETIME
+  UNIQUE (person_id, item_id)  — one review per customer per item
+
+────────────────────────────────────────────────────────────
+ RELATIONSHIPS (cardinality)
+────────────────────────────────────────────────────────────
+
+Person           1──< Customer          (IS-A, optional)
+Person           1──< Admin             (IS-A, optional)
+Person           1──< Employee          (IS-A, optional)
+Customer         1──< Individual        (IS-A, optional)
+Customer         1──< Business          (IS-A, optional)
+
+Location         1──< Branch            (one location per branch)
+Location         1──< Customer          (optional delivery address)
+Location         1──< Warehouse         (one location per warehouse)
+
+Branch           1──< Admin             (admin manages a branch; null = full admin)
+Branch           1──< Employee          (employee belongs to a branch)
+Branch           1──< BranchInventory   (branch stocks many items)
+Branch           1──< RoastBatch        (roast batches at a branch)
+
+Warehouse        1──< WarehouseInventory  (warehouse holds many items)
+
+Item             1──< BranchInventory     (item can be at many branches)
+Item             1──< WarehouseInventory  (item can be at many warehouses)
+Item             1──< SupplierItem        (item can have many suppliers)
+Item             1──< PackageItem         (item can appear in many packages)
+Item             1──< Coffee              (IS-A, optional)
+Item             1──< Spice               (IS-A, optional)
+Item             1──< Package             (IS-A, optional)
+Item             1──< OrderItem
+Item             1──< Cart
+Item             1──< Review
+Item             1──< Discount            (optional per-item discount)
+Item             1──< RoastBatch
+
+Supplier         1──< SupplierItem        (supplier supplies many items)
+Supplier         1──< Item               (default supplier reference)
+
+Package          1──< PackageItem         (package contains many items)
+
+Person           1──< Order               (customer places orders)
+Person           1──< Cart
+Person           1──< Review
+
+Order            1──< OrderItem
+Order            1──1 Delivery
+Order            1──1 Payment
+
+Employee         1──< Delivery            (employee handles delivery for their branch)
+
+────────────────────────────────────────────────────────────
+ KEY BUSINESS RULES
+────────────────────────────────────────────────────────────
+
+1.  Every Item must have a Supplier. If none is assigned, "Bawabet Al-Quds"
+    (the company's own supplier record) is used as the default.
+
+2.  BranchInventory tracks per-branch stock. Adding an item to Cart
+    decrements branch stock; removing from Cart refills it.
+    Purchasing (Order placed) permanently decrements and does NOT refill.
+
+3.  WarehouseInventory tracks warehouse stock independently. Items are
+    transferred from a Warehouse to a Branch via an atomic SQL transaction
+    (deduct warehouse qty, add branch qty). The transfer fails if warehouse
+    has insufficient stock.
+
+4.  When a Cart contains items from multiple branches, placing the order
+    creates one Order record per branch group, each with its own Delivery
+    assigned to an employee of that branch.
+
+5.  A Customer may review an item only after placing an order that contains
+    that item, and may review each item at most once.
+
+6.  Packages are Items; their stock is treated as always available (no
+    BranchInventory row required — they pass the package EXISTS check).
+    Individual items inside a package are tracked normally.
+
+7.  A Discount may apply to a specific Item (item_id set) or to the entire
+    store (item_id NULL).
+
+8.  An Admin with branch_id NULL is a full admin and can manage all branches.
+    An Admin with branch_id set manages only that branch (same as an Employee
+    for inventory purposes).
+============================================================

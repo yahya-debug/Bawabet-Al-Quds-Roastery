@@ -76,7 +76,7 @@ public class ItemDAO {
                     rs.getString("image_path"),
                     supId,
                     rs.getString("supplier_name"),
-                    rs.getInt("branch_qty")
+                    rs.getDouble("branch_qty")
                 ));
             }
         } catch (SQLException ex) {

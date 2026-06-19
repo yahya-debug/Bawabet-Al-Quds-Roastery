@@ -131,7 +131,11 @@ public class CartUI {
         price.setFont(Font.font("Nunito", FontWeight.BOLD, 15));
         price.setTextFill(Color.hsb(48, 1, 0.92, 1));
 
-        Label qty = new Label("× " + row.getQuantity());
+        boolean isPackage = "Package".equalsIgnoreCase(row.getItemType());
+        String qtyText = isPackage
+            ? "× " + (int) row.getQuantity()
+            : String.format("× %.3f kg", row.getQuantity());
+        Label qty = new Label(qtyText);
         qty.setFont(Font.font("Nunito", 14));
         qty.setTextFill(Color.hsb(30, 0.12, 0.72, 1));
 

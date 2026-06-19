@@ -27,16 +27,16 @@ public class OrderDAO {
             ResultSet cartRs = cartPs.executeQuery();
 
             // Map<branchId, list of {itemId, qty}> and Map<branchId, Map<itemId, price>>
-            Map<Integer, List<int[]>>      linesByBranch  = new LinkedHashMap<>();
-            Map<Integer, Map<Integer, Double>> priceMap   = new LinkedHashMap<>();
-            Map<Integer, Double>           totalByBranch  = new LinkedHashMap<>();
+            Map<Integer, List<Object[]>>       linesByBranch = new LinkedHashMap<>();
+            Map<Integer, Map<Integer, Double>> priceMap      = new LinkedHashMap<>();
+            Map<Integer, Double>               totalByBranch = new LinkedHashMap<>();
 
             while (cartRs.next()) {
-                int    itemId  = cartRs.getInt("item_id");
-                int    qty     = cartRs.getInt("quantity");
-                int    bId     = cartRs.getInt("branch_id");
-                double price   = cartRs.getDouble("price");
-                linesByBranch.computeIfAbsent(bId, k -> new ArrayList<>()).add(new int[]{itemId, qty});
+                int    itemId = cartRs.getInt("item_id");
+                double qty    = cartRs.getDouble("quantity");
+                int    bId    = cartRs.getInt("branch_id");
+                double price  = cartRs.getDouble("price");
+                linesByBranch.computeIfAbsent(bId, k -> new ArrayList<>()).add(new Object[]{itemId, qty});
                 priceMap.computeIfAbsent(bId, k -> new HashMap<>()).put(itemId, price);
                 totalByBranch.merge(bId, price * qty, Double::sum);
             }
@@ -45,9 +45,9 @@ public class OrderDAO {
 
             int ordersCreated = 0;
 
-            for (Map.Entry<Integer, List<int[]>> entry : linesByBranch.entrySet()) {
+            for (Map.Entry<Integer, List<Object[]>> entry : linesByBranch.entrySet()) {
                 int branchId = entry.getKey();
-                List<int[]> lines = entry.getValue();
+                List<Object[]> lines = entry.getValue();
                 double total = totalByBranch.get(branchId);
 
                 PreparedStatement orderPs = conn.prepareStatement(
@@ -64,14 +64,16 @@ public class OrderDAO {
                 int orderId = keys.getInt(1);
 
                 Map<Integer, Double> prices = priceMap.get(branchId);
-                for (int[] line : lines) {
+                for (Object[] line : lines) {
+                    int    lineItemId = (int)    line[0];
+                    double lineQty    = (double) line[1];
                     PreparedStatement itemPs = conn.prepareStatement(
                         "INSERT INTO OrderItem (order_id, item_id, quantity, unit_price) VALUES (?, ?, ?, ?)"
                     );
                     itemPs.setInt(1, orderId);
-                    itemPs.setInt(2, line[0]);
-                    itemPs.setInt(3, line[1]);
-                    itemPs.setDouble(4, prices.get(line[0]));
+                    itemPs.setInt(2, lineItemId);
+                    itemPs.setDouble(3, lineQty);
+                    itemPs.setDouble(4, prices.get(lineItemId));
                     itemPs.executeUpdate();
                 }
 

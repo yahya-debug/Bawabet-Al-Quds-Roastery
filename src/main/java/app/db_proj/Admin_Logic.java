@@ -453,18 +453,23 @@ public class Admin_Logic {
     }
 
     // insert a new item; returns the new item_id (>0), -1 for empty, -2 for price error, -3 for SQL error
-    public static int addItem(Connection conn, String name, String priceStr, String itemType, String imagePath) {
+    // always assigns a supplier: uses defaultSupplierId if supplierId <= 0
+    public static int addItem(Connection conn, String name, String priceStr, String itemType,
+                              String imagePath, int supplierId) {
         if (name.isBlank() || priceStr.isBlank() || itemType.isBlank()) return -1;
         try {
             double price = Double.parseDouble(priceStr);
+            int effectiveSupplier = supplierId > 0 ? supplierId : ensureDefaultSupplier(conn);
             PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO Item (name, price, item_type, image_path) VALUES (?, ?, ?, ?)",
+                "INSERT INTO Item (name, price, item_type, image_path, supplier_id) VALUES (?, ?, ?, ?, ?)",
                 Statement.RETURN_GENERATED_KEYS
             );
             ps.setString(1, name);
             ps.setDouble(2, price);
             ps.setString(3, itemType);
             ps.setString(4, (imagePath != null && !imagePath.isBlank()) ? imagePath : null);
+            if (effectiveSupplier > 0) ps.setInt(5, effectiveSupplier);
+            else ps.setNull(5, java.sql.Types.INTEGER);
             ps.executeUpdate();
             ResultSet keys = ps.getGeneratedKeys();
             return keys.next() ? keys.getInt(1) : -3;
@@ -474,6 +479,11 @@ public class Admin_Logic {
             System.out.println(ex.getMessage());
             return -3;
         }
+    }
+
+    // backward-compat overload — uses default supplier
+    public static int addItem(Connection conn, String name, String priceStr, String itemType, String imagePath) {
+        return addItem(conn, name, priceStr, itemType, imagePath, -1);
     }
 
     // ── BRANCH INVENTORY ─────────────────────────────────────────────────────
@@ -507,28 +517,59 @@ public class Admin_Logic {
     }
 
     // Returns total stock across all branches for one item
-    public static int getTotalStock(Connection conn, int itemId) {
+    public static double getTotalBranchStock(Connection conn, int itemId) {
         try {
             PreparedStatement ps = conn.prepareStatement(
-                "SELECT SUM(quantity) AS total FROM BranchInventory WHERE item_id = ?"
+                "SELECT COALESCE(SUM(quantity), 0) AS total FROM BranchInventory WHERE item_id = ?"
             );
             ps.setInt(1, itemId);
             ResultSet rs = ps.executeQuery();
-            if (rs.next()) return rs.getInt("total");
+            if (rs.next()) return rs.getDouble("total");
         } catch (SQLException ex) { System.out.println(ex.getMessage()); }
-        return 0;
+        return 0.0;
     }
 
-    public static void setStock(Connection conn, int branchId, int itemId, int quantity) {
+    // kept for callers that used the old name
+    public static double getTotalStock(Connection conn, int itemId) {
+        return getTotalBranchStock(conn, itemId);
+    }
+
+    // stock of one item at a specific branch (0 if not stocked there)
+    public static double getBranchItemStock(Connection conn, int branchId, int itemId) {
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT COALESCE(quantity, 0) AS qty FROM BranchInventory WHERE branch_id = ? AND item_id = ?"
+            );
+            ps.setInt(1, branchId); ps.setInt(2, itemId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getDouble("qty");
+        } catch (SQLException ex) { System.out.println(ex.getMessage()); }
+        return 0.0;
+    }
+
+    public static void setStock(Connection conn, int branchId, int itemId, double quantity) {
         try {
             PreparedStatement ps = conn.prepareStatement(
                 "INSERT INTO BranchInventory (branch_id, item_id, quantity) VALUES (?, ?, ?) " +
                 "ON DUPLICATE KEY UPDATE quantity = ?"
             );
             ps.setInt(1, branchId); ps.setInt(2, itemId);
-            ps.setInt(3, quantity); ps.setInt(4, quantity);
+            ps.setDouble(3, quantity); ps.setDouble(4, quantity);
             ps.executeUpdate();
         } catch (SQLException ex) { System.out.println(ex.getMessage()); }
+    }
+
+    public static boolean deleteItem(Connection conn, int itemId) {
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "DELETE FROM Item WHERE item_id = ?"
+            );
+            ps.setInt(1, itemId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            System.out.println("deleteItem: " + ex.getMessage());
+            return false;
+        }
     }
 
     // adds image_path column to Item if it does not already exist
@@ -542,7 +583,7 @@ public class Admin_Logic {
         }
     }
 
-    // creates the Supplier table if it does not exist yet
+    // creates the Supplier table if it does not exist yet, then ensures the default company supplier row exists
     public static void ensureSupplierTable(Connection conn) {
         try {
             conn.createStatement().executeUpdate(
@@ -555,6 +596,29 @@ public class Admin_Logic {
             );
         } catch (SQLException ex) {
             System.out.println(ex.getMessage());
+        }
+        ensureDefaultSupplier(conn);
+    }
+
+    // guarantees the in-house "Bawabet Al-Quds" supplier exists; returns its supplier_id
+    public static int ensureDefaultSupplier(Connection conn) {
+        try {
+            PreparedStatement check = conn.prepareStatement(
+                "SELECT supplier_id FROM Supplier WHERE name = 'Bawabet Al-Quds' LIMIT 1"
+            );
+            ResultSet rs = check.executeQuery();
+            if (rs.next()) return rs.getInt("supplier_id");
+
+            PreparedStatement ins = conn.prepareStatement(
+                "INSERT INTO Supplier (name, email) VALUES ('Bawabet Al-Quds', 'info@bawabet-alquds.com')",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            ins.executeUpdate();
+            ResultSet keys = ins.getGeneratedKeys();
+            return keys.next() ? keys.getInt(1) : -1;
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+            return -1;
         }
     }
 
