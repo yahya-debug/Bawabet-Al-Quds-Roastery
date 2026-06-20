@@ -28,7 +28,6 @@ public class Auth_Logic {
     // insert a new personal account
     // adds the row to Person then marks the same person_id as a customer of type individual
     // also stores the new user as the current session so the home page opens already signed in
-    // phone is captured by the form but the schema has no place for it yet so it is ignored
     // returns ok, empty, duplicate, or error
     public static String signupPersonal(SystemHandling sys, String name, String email, String phone, String password) {
         if (name.isEmpty() || email.isEmpty() || password.isEmpty())
@@ -36,7 +35,7 @@ public class Auth_Logic {
         try {
             // insert the person row and grab the generated id
             PreparedStatement personStmt = sys.getConn().prepareStatement(
-                "INSERT INTO Person (name, email, password) VALUES ('" + name + "','" + email + "','" + password + "');",
+                "INSERT INTO Person (name, email, password, phone) VALUES ('" + name + "','" + email + "','" + password + "','" + phone + "');",
                 Statement.RETURN_GENERATED_KEYS
             );
             personStmt.executeUpdate();
@@ -86,7 +85,7 @@ public class Auth_Logic {
 
             // then the person row and grab the generated person id
             PreparedStatement personStmt = sys.getConn().prepareStatement(
-                "INSERT INTO Person (name, email, password) VALUES ('" + name + "','" + email + "','" + password + "');",
+                "INSERT INTO Person (name, email, password, phone) VALUES ('" + name + "','" + email + "','" + password + "','" + phone + "');",
                 Statement.RETURN_GENERATED_KEYS
             );
             personStmt.executeUpdate();

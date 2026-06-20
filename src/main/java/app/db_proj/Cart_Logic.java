@@ -73,23 +73,42 @@ public class Cart_Logic {
     }
 
     public static List<CartItemRow> getCartItems(Connection conn, int userId) {
-        return query(conn, userId, null);
+        return query(conn, userId, null, null, null);
     }
 
-    public static List<CartItemRow> searchCartItems(Connection conn, int userId, String search) {
-        return query(conn, userId, search);
+    public static List<CartItemRow> getCartItems(Connection conn, int userId,
+                                                  String search, String sort, String filterType) {
+        return query(conn, userId, search, sort, filterType);
     }
 
-    private static List<CartItemRow> query(Connection conn, int userId, String search) {
+    private static List<CartItemRow> query(Connection conn, int userId,
+                                            String search, String sort, String filterType) {
         List<CartItemRow> list = new ArrayList<>();
         try {
-            String sql = "SELECT I.item_id, I.name, I.price, C.quantity, I.item_type, I.image_path, " +
-                         "       COALESCE(C.branch_id, 0) AS branch_id " +
-                         "FROM Cart C JOIN Item I ON C.item_id = I.item_id WHERE C.person_id = ?";
-            if (search != null && !search.isBlank()) sql += " AND I.name LIKE ?";
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setInt(1, userId);
-            if (search != null && !search.isBlank()) ps.setString(2, "%" + search + "%");
+            StringBuilder sql = new StringBuilder(
+                "SELECT I.item_id, I.name, I.price, C.quantity, I.item_type, I.image_path, " +
+                "       COALESCE(C.branch_id, 0) AS branch_id " +
+                "FROM Cart C JOIN Item I ON C.item_id = I.item_id WHERE C.person_id = ?");
+
+            if (search != null && !search.isBlank())
+                sql.append(" AND I.name LIKE ?");
+            if (filterType != null && !filterType.isBlank() && !"All".equalsIgnoreCase(filterType))
+                sql.append(" AND LOWER(I.item_type) = LOWER(?)");
+
+            switch (sort != null ? sort : "") {
+                case "Price: Low to High"  -> sql.append(" ORDER BY I.price ASC");
+                case "Price: High to Low"  -> sql.append(" ORDER BY I.price DESC");
+                case "Name: A-Z"           -> sql.append(" ORDER BY I.name ASC");
+                case "Name: Z-A"           -> sql.append(" ORDER BY I.name DESC");
+            }
+
+            PreparedStatement ps = conn.prepareStatement(sql.toString());
+            int p = 1;
+            ps.setInt(p++, userId);
+            if (search != null && !search.isBlank())         ps.setString(p++, "%" + search + "%");
+            if (filterType != null && !filterType.isBlank()
+                    && !"All".equalsIgnoreCase(filterType))  ps.setString(p++, filterType);
+
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 list.add(new CartItemRow(

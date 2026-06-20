@@ -119,7 +119,7 @@ public class OrderDAO {
             PreparedStatement ps = conn.prepareStatement(
                 "SELECT 1 FROM OrderItem OI " +
                 "JOIN `Order` O ON OI.order_id = O.order_id " +
-                "WHERE O.person_id = ? AND OI.item_id = ? LIMIT 1"
+                "WHERE O.person_id = ? AND OI.item_id = ? AND O.status = 'delivered' LIMIT 1"
             );
             ps.setInt(1, personId);
             ps.setInt(2, itemId);

@@ -204,6 +204,18 @@ public class Admin_Logic {
         }
     }
 
+    // returns true if the given person is the main admin (branch_id = 1)
+    public static boolean isSuperAdmin(Connection conn, int personId) {
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT 1 FROM Admin WHERE person_id = ? AND branch_id = 1 LIMIT 1"
+            );
+            ps.setInt(1, personId);
+            return ps.executeQuery().next();
+        } catch (SQLException ex) { System.out.println(ex.getMessage()); }
+        return false;
+    }
+
     // return the branch_id where the given employee works, or -1 if not found
     public static int getEmployeeBranchId(Connection conn, int personId) {
         try {

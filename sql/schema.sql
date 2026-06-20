@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS Person (
   name      VARCHAR(45)  NOT NULL,
   email     VARCHAR(45)  NOT NULL,
   password  VARCHAR(100) NOT NULL,
+  phone     VARCHAR(45)  DEFAULT NULL,
   PRIMARY KEY (person_id),
   UNIQUE KEY uq_person_email          (email),
   UNIQUE KEY uq_person_name_email     (name, email)

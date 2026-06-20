@@ -131,48 +131,104 @@ public class ProfileUI {
         ImageView iv = new ImageView(new Image(getClass().getResourceAsStream("/app/db_proj/icons8-left-96.png")));
         Button go_back_btn = new Buttons(null, null, iv, 35).getBtn();
         Label title = new Labels("Edit Profile", Font.font("Nunito", FontWeight.BOLD, 27), Color.hsb(48, 1, 0.92, 1)).getLabel();
-
         go_back_btn.setOnAction(e -> Base());
         go_back_btn.setPadding(new Insets(0));
-
         head.getChildren().addAll(go_back_btn, title);
         head.setAlignment(Pos.CENTER_LEFT);
 
-        // prefill the email from the customer record fetched on profile open
-        String prefillEmail = info != null && info.email != null ? info.email : "";
-        HBox email = field("Email", prefillEmail);
-        HBox phone = field("Phone Number", null);
-        HBox address = field("Address", null);
-        HBox password1 = field("Current Password", null);
-        HBox password2 = field("New Password", null);
-        HBox password3 = field("Confirm Password", null);
+        boolean isBusiness = info != null && "business".equalsIgnoreCase(info.type);
+        String nameLabel = isBusiness ? "Business Name" : "Name";
 
-        // TODO: show only when Session contains account type = "business"
-        HBox businessName = field("Business Name", null);
+        HBox nameBox    = field(nameLabel, info != null && info.name    != null ? info.name    : "");
+        HBox emailBox   = field("Email",   info != null && info.email   != null ? info.email   : "");
+        HBox phoneBox   = field("Phone",   info != null && info.phone   != null ? info.phone   : "");
+        HBox addressBox = field("Address", info != null && info.address != null ? info.address : "");
 
-        Label businessNameError = new Label("Company name already taken.");
-        businessNameError.setTextFill(Color.hsb(5, 0.85, 0.75));
-        businessNameError.setFont(Font.font("Nunito", 14));
-        businessNameError.setVisible(false);
-        businessNameError.setManaged(false);
+        TextField nameField    = (TextField) nameBox.getChildren().get(1);
+        TextField emailField   = (TextField) emailBox.getChildren().get(1);
+        TextField phoneField   = (TextField) phoneBox.getChildren().get(1);
+        TextField addressField = (TextField) addressBox.getChildren().get(1);
 
-        Button saveBtn = new Buttons("Save Changes", new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(12), null)).getBtn();
+        Label pwHead = new Labels("Change Password",
+            Font.font("Nunito", FontWeight.BOLD, 16), Color.hsb(30, 0.12, 0.60, 1)).getLabel();
+        pwHead.setPadding(new Insets(8, 0, 0, 0));
+
+        HBox curPwBox  = field("Current Password", "");
+        HBox newPwBox  = field("New Password",     "");
+        HBox confPwBox = field("Confirm Password", "");
+
+        TextField curPwField  = (TextField) curPwBox.getChildren().get(1);
+        TextField newPwField  = (TextField) newPwBox.getChildren().get(1);
+        TextField confPwField = (TextField) confPwBox.getChildren().get(1);
+
+        Label errLabel = new Label();
+        errLabel.setFont(Font.font("Nunito", 14));
+        errLabel.setTextFill(Color.hsb(5, 0.85, 0.75));
+        errLabel.setVisible(false);
+        errLabel.setManaged(false);
+
+        Label okLabel = new Label("Saved!");
+        okLabel.setFont(Font.font("Nunito", 14));
+        okLabel.setTextFill(Color.hsb(120, 0.5, 0.75));
+        okLabel.setVisible(false);
+        okLabel.setManaged(false);
+
+        Button saveBtn = new Buttons("Save Changes",
+            new BackgroundFill(Color.hsb(48, 1, 0.92, 1), new CornerRadii(12), null)).getBtn();
         saveBtn.setFont(Font.font("Nunito", FontWeight.BOLD, 18));
         saveBtn.setMaxWidth(Double.MAX_VALUE);
         saveBtn.setOnAction(e -> {
-            // TODO: query DB — check if another company has this name
-            boolean nameTaken = false; // replace with actual DB check
-            if (nameTaken) {
-                businessNameError.setVisible(true);
-                businessNameError.setManaged(true);
-            } else {
-                businessNameError.setVisible(false);
-                businessNameError.setManaged(false);
-                // TODO: save changes to DB
+            errLabel.setVisible(false); errLabel.setManaged(false);
+            okLabel.setVisible(false);  okLabel.setManaged(false);
+
+            String res = Profile_Logic.updateProfile(sys.getConn(), sys.getCurrentUserId(),
+                nameField.getText(), emailField.getText(), phoneField.getText());
+            if (res.equals("empty")) {
+                errLabel.setText("Name and email cannot be empty");
+                errLabel.setVisible(true); errLabel.setManaged(true);
+                return;
+            } else if (res.equals("duplicate")) {
+                errLabel.setText("Email already in use by another account");
+                errLabel.setVisible(true); errLabel.setManaged(true);
+                return;
+            } else if (!res.equals("ok")) {
+                errLabel.setText("Failed to save changes");
+                errLabel.setVisible(true); errLabel.setManaged(true);
+                return;
             }
+
+            Profile_Logic.updateAddress(sys.getConn(), sys.getCurrentUserId(), addressField.getText());
+
+            if (!curPwField.getText().isBlank()) {
+                String pwRes = Profile_Logic.updatePassword(sys.getConn(), sys.getCurrentUserId(),
+                    curPwField.getText(), newPwField.getText(), confPwField.getText());
+                if (pwRes.equals("empty")) {
+                    errLabel.setText("Fill in all three password fields");
+                    errLabel.setVisible(true); errLabel.setManaged(true);
+                    return;
+                } else if (pwRes.equals("wrong_password")) {
+                    errLabel.setText("Current password is incorrect");
+                    errLabel.setVisible(true); errLabel.setManaged(true);
+                    return;
+                } else if (pwRes.equals("mismatch")) {
+                    errLabel.setText("New passwords do not match");
+                    errLabel.setVisible(true); errLabel.setManaged(true);
+                    return;
+                }
+            }
+
+            info = Profile_Logic.getCustomer(sys.getConn(), sys.getCurrentUserId());
+            sys.setCurrentUser(sys.getCurrentUserId(),
+                info != null ? info.name  : sys.getCurrentUserName(),
+                info != null ? info.email : sys.getCurrentUserEmail());
+            okLabel.setVisible(true); okLabel.setManaged(true);
         });
 
-        main_block.getChildren().addAll(head, businessName, email, phone, address, businessNameError, password1, password2, password3, saveBtn);
+        main_block.getChildren().addAll(
+            head, nameBox, emailBox, phoneBox, addressBox,
+            pwHead, curPwBox, newPwBox, confPwBox,
+            errLabel, okLabel, saveBtn
+        );
     }
 
     public static HBox profileBtn(String txt) {

@@ -34,6 +34,7 @@ public class SystemHandling {
     private String currentUserName;
     private String currentUserEmail;
     private boolean userIsAdmin;
+    private boolean userIsSuperAdmin;
     private boolean userIsEmployee;
     private int selectedBranchId = -1; // -1 = All branches
 
@@ -152,12 +153,17 @@ public class SystemHandling {
         this.authenticated = true;
         System.out.println(Profile_Logic.isAdmin(conn, id));
         this.userIsAdmin = Profile_Logic.isAdmin(conn, id);
+        this.userIsSuperAdmin = userIsAdmin && Admin_Logic.isSuperAdmin(conn, id);
         this.userIsEmployee = Admin_Logic.getEmployeeBranchId(conn, id) != -1;
         if (Top != null) Top.refreshAuth();
     }
 
     public boolean isUserAdmin() {
         return userIsAdmin;
+    }
+
+    public boolean isUserSuperAdmin() {
+        return userIsSuperAdmin;
     }
 
     public boolean isUserEmployee() {
@@ -174,6 +180,7 @@ public class SystemHandling {
         currentUserName = null;
         currentUserEmail = null;
         userIsAdmin = false;
+        userIsSuperAdmin = false;
         userIsEmployee = false;
         admin_page = null;
         // only close the profile overlay if it's actually open

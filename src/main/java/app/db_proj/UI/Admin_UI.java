@@ -34,7 +34,8 @@ public class Admin_UI {
     private VBox main_content, left_nav;
     private SystemHandling sys;
     private int adminBranchId = -1;
-    private boolean isFullAdmin;
+    private boolean isFullAdmin;   // true for any admin (super or branch)
+    private boolean isSuperAdmin;  // true only for branch_id = 1
 
     private Button[] navBtns;
     private int[] sectionIndices;
@@ -67,7 +68,8 @@ public class Admin_UI {
         screen.setMaxHeight(Double.MAX_VALUE);
 
         if (sys.getCurrentUserId() != null) {
-            isFullAdmin = sys.isUserAdmin();
+            isFullAdmin  = sys.isUserAdmin();
+            isSuperAdmin = sys.isUserSuperAdmin();
             adminBranchId = isFullAdmin
                 ? Admin_Logic.getAdminBranchId(sys.getConn(), sys.getCurrentUserId())
                 : Admin_Logic.getEmployeeBranchId(sys.getConn(), sys.getCurrentUserId());
@@ -95,7 +97,9 @@ public class Admin_UI {
         )));
         left_nav.setMaxHeight(Double.MAX_VALUE);
 
-        String panelTitle = isFullAdmin ? "Admin Panel" : "Employee Portal";
+        String panelTitle = isSuperAdmin ? "Main Admin"
+                          : isFullAdmin  ? "Branch Admin"
+                          :                "Employee Portal";
         Label title = new Labels(panelTitle,
             Font.font("Adwaita Mono", FontWeight.BOLD, 21),
             Color.hsb(48, 1, 0.92, 1)).getLabel();
@@ -104,9 +108,12 @@ public class Admin_UI {
         Separator sep = new Separator();
 
         String[] names;
-        if (isFullAdmin) {
+        if (isSuperAdmin) {
             names = new String[]{"Branch", "Employees", "Users", "Items", "Suppliers", "Orders", "Reports", "Packages", "Warehouses"};
             sectionIndices = new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8};
+        } else if (isFullAdmin) {
+            names = new String[]{"Branch", "Employees", "Orders"};
+            sectionIndices = new int[]{0, 1, 5};
         } else {
             names = new String[]{"Branch", "Employees", "Suppliers", "Orders"};
             sectionIndices = new int[]{0, 1, 4, 5};
@@ -224,7 +231,7 @@ public class Admin_UI {
         branchSection.setPadding(new Insets(14, 0, 14, 14));
         VBox.setVgrow(branchSection, Priority.ALWAYS);
 
-        HBox header = isFullAdmin
+        HBox header = isSuperAdmin
             ? sectionHeader("Branches", e -> showFormOverlay(make_branch_form()))
             : sectionTitleOnly("My Branch");
 
@@ -240,7 +247,7 @@ public class Admin_UI {
         if (branch_cards_box == null) return;
         branch_cards_box.getChildren().clear();
 
-        if (!isFullAdmin) {
+        if (!isSuperAdmin) {
             if (adminBranchId == -1) {
                 branch_cards_box.getChildren().add(emptyLabel("No branch assigned"));
                 return;
@@ -278,12 +285,13 @@ public class Admin_UI {
     }
 
     private void refresh_branch_employees() {
-        if (emp_cards_box == null || adminBranchId == -1) return;
+        if (emp_cards_box == null) return;
         emp_cards_box.getChildren().clear();
-        List<Admin_Logic.EmployeeRow> rows =
-            Admin_Logic.getEmployeesByBranch(sys.getConn(), adminBranchId);
+        List<Admin_Logic.EmployeeRow> rows = isSuperAdmin
+            ? Admin_Logic.getEmployees(sys.getConn())
+            : (adminBranchId == -1 ? List.of() : Admin_Logic.getEmployeesByBranch(sys.getConn(), adminBranchId));
         if (rows.isEmpty()) {
-            emp_cards_box.getChildren().add(emptyLabel("No employees in this branch"));
+            emp_cards_box.getChildren().add(emptyLabel("No employees found"));
             return;
         }
         for (Admin_Logic.EmployeeRow row : rows)
@@ -1002,6 +1010,12 @@ public class Admin_UI {
         VBox content = new VBox(12);
         content.setPadding(new Insets(14));
 
+        if (!isSuperAdmin) {
+            // branch admin: employee form only, no admin tab
+            content.getChildren().add(make_employee_form());
+            return content;
+        }
+
         HBox toggle = new HBox(0);
         toggle.setBackground(new Background(new BackgroundFill(
             Color.hsb(0, 0, 0.18, 1), new CornerRadii(10), null)));
@@ -1059,7 +1073,7 @@ public class Admin_UI {
         hire_date.setStyle("-fx-background-color: hsb(35, 12%, 20%); -fx-font-size: 14px;");
         hire_date.setMaxWidth(Double.MAX_VALUE);
 
-        ComboBox<Admin_Logic.BranchRow> branch_cb = branchCombo();
+        ComboBox<Admin_Logic.BranchRow> branch_cb = isSuperAdmin ? branchCombo() : null;
 
         Button submit = submitBtn("Register Employee");
         submit.setOnAction(e -> {
@@ -1067,7 +1081,9 @@ public class Admin_UI {
             warn_dup.setVisible(false);
             ok_msg.setVisible(false);
 
-            Integer bId = branch_cb.getValue() != null ? branch_cb.getValue().branchId : null;
+            Integer bId = isSuperAdmin
+                ? (branch_cb.getValue() != null ? branch_cb.getValue().branchId : null)
+                : adminBranchId;
             String dateStr = hire_date.getValue() != null ? hire_date.getValue().toString() : "";
 
             String result = Admin_Logic.registerEmployee(
@@ -1081,13 +1097,18 @@ public class Admin_UI {
                 name.clear(); email.clear(); password.clear();
                 role.clear(); salary.clear();
                 hire_date.setValue(null);
-                branch_cb.getSelectionModel().clearSelection();
+                if (branch_cb != null) branch_cb.getSelectionModel().clearSelection();
                 refresh_branch_employees();
             }
         });
 
-        form.getChildren().addAll(title, warn_empty, warn_dup, ok_msg,
-            name, email, password, role, salary, hire_date, branch_cb, submit);
+        if (isSuperAdmin) {
+            form.getChildren().addAll(title, warn_empty, warn_dup, ok_msg,
+                name, email, password, role, salary, hire_date, branch_cb, submit);
+        } else {
+            form.getChildren().addAll(title, warn_empty, warn_dup, ok_msg,
+                name, email, password, role, salary, hire_date, submit);
+        }
         return form;
     }
 
@@ -1509,9 +1530,9 @@ public class Admin_UI {
     private void refresh_orders() {
         if (order_cards_box == null) return;
         order_cards_box.getChildren().clear();
-        List<Order> orders = (!isFullAdmin && adminBranchId >= 0)
-            ? OrderDAO.getOrdersByBranch(sys.getConn(), adminBranchId)
-            : OrderDAO.getAllOrders(sys.getConn());
+        List<Order> orders = isSuperAdmin
+            ? OrderDAO.getAllOrders(sys.getConn())
+            : (adminBranchId >= 0 ? OrderDAO.getOrdersByBranch(sys.getConn(), adminBranchId) : List.of());
         if (orders.isEmpty()) {
             order_cards_box.getChildren().add(emptyLabel("No orders yet"));
             return;

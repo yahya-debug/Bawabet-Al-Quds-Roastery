@@ -30,6 +30,10 @@ public class CartUI {
     private Region spacer;
     private Label total_price_lbl;
     private TextField search_tf;
+    private ComboBox<String> sortBox;
+    private ComboBox<String> filterBox;
+    private String currentSort   = "Default";
+    private String currentFilter = "All";
 
     public CartUI(SystemHandling sys) {
         this.sys = sys;
@@ -47,6 +51,10 @@ public class CartUI {
     }
 
     public void refresh() {
+        currentSort   = "Default";
+        currentFilter = "All";
+        if (sortBox   != null) sortBox.setValue("Default");
+        if (filterBox != null) filterBox.setValue("All");
         loadCartItems("");
         refreshOrders();
         if (search_tf != null) search_tf.clear();
@@ -62,31 +70,26 @@ public class CartUI {
 
         Integer uid = sys.getCurrentUserId();
         if (uid == null) {
-            Label msg = new Labels("Please log in to view your cart",
-                Font.font("Nunito", 17), Color.hsb(30, 0.12, 0.78, 1)).getLabel();
-            cart_scroll.getChildren().add(msg);
+            cart_scroll.getChildren().add(new Labels("Please log in to view your cart",
+                Font.font("Nunito", 17), Color.hsb(30, 0.12, 0.78, 1)).getLabel());
             updateTotal(0.0);
             return;
         }
 
-        List<Cart_Logic.CartItemRow> items = search.isBlank()
-            ? Cart_Logic.getCartItems(sys.getConn(), uid)
-            : Cart_Logic.searchCartItems(sys.getConn(), uid, search);
+        List<Cart_Logic.CartItemRow> items =
+            Cart_Logic.getCartItems(sys.getConn(), uid, search, currentSort, currentFilter);
 
         if (items.isEmpty()) {
-            Label msg = new Labels("Your cart is empty",
-                Font.font("Nunito", 17), Color.hsb(30, 0.12, 0.78, 1)).getLabel();
-            cart_scroll.getChildren().add(msg);
+            boolean filtered = !search.isBlank() || !"All".equals(currentFilter);
+            String emptyMsg  = filtered ? "No items match your search/filter" : "Your cart is empty";
+            cart_scroll.getChildren().add(new Labels(emptyMsg,
+                Font.font("Nunito", 17), Color.hsb(30, 0.12, 0.78, 1)).getLabel());
         } else {
-            for (Cart_Logic.CartItemRow item : items) {
+            for (Cart_Logic.CartItemRow item : items)
                 cart_scroll.getChildren().add(makeDbItemCard(item));
-            }
         }
 
-        double total = search.isBlank()
-            ? Cart_Logic.getCartTotal(sys.getConn(), uid)
-            : items.stream().mapToDouble(i -> i.getPrice() * i.getQuantity()).sum();
-        updateTotal(total);
+        updateTotal(Cart_Logic.getCartTotal(sys.getConn(), uid));
     }
 
     private HBox makeDbItemCard(Cart_Logic.CartItemRow row) {
@@ -216,23 +219,37 @@ public class CartUI {
         search_exec.setOnAction(e -> loadCartItems(search_tf.getText().trim()));
         search_tf.setOnAction(e -> loadCartItems(search_tf.getText().trim()));
 
-        Button filterBtn = new Buttons("Filter",
-            new BackgroundFill(Color.hsb(35, 0.14, 0.30, 1), new CornerRadii(8), null)).getBtn();
-        filterBtn.setFont(Font.font("Nunito", FontWeight.BOLD, 15));
-        filterBtn.setTextFill(Color.hsb(30, 0.12, 0.78, 1));
-        filterBtn.setMaxHeight(45);
-        filterBtn.setPrefWidth(90);
-        filterBtn.setCursor(Cursor.HAND);
+        filterBox = new ComboBox<>();
+        filterBox.getItems().addAll("All", "Coffee", "Roasts", "Spice", "Package");
+        filterBox.setValue("All");
+        filterBox.setStyle(
+            "-fx-background-color: hsb(35, 14%, 30%); -fx-font-family: 'Nunito'; " +
+            "-fx-font-size: 15px; -fx-background-radius: 8; -fx-border-radius: 8;");
+        filterBox.buttonCellProperty().set(new ListCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? "Filter" : item);
+                setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+                setFont(Font.font("Nunito", 15));
+                setBackground(Background.EMPTY);
+            }
+        });
+        filterBox.setPrefHeight(45);
+        filterBox.setPrefWidth(120);
+        filterBox.setCursor(Cursor.HAND);
+        filterBox.setOnAction(e -> {
+            currentFilter = filterBox.getValue() != null ? filterBox.getValue() : "All";
+            loadCartItems(search_tf.getText().trim());
+        });
 
-        ComboBox<String> sortBox = new ComboBox<>();
+        sortBox = new ComboBox<>();
         sortBox.getItems().addAll("Default", "Price: Low to High", "Price: High to Low", "Name: A-Z", "Name: Z-A");
-        sortBox.setValue("Sort");
+        sortBox.setValue("Default");
         sortBox.setStyle(
             "-fx-background-color: hsb(35, 14%, 30%); -fx-font-family: 'Nunito'; " +
             "-fx-font-size: 15px; -fx-background-radius: 8; -fx-border-radius: 8;");
         sortBox.buttonCellProperty().set(new ListCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
+            @Override protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? "Sort" : item);
                 setTextFill(Color.hsb(30, 0.12, 0.78, 1));
@@ -243,11 +260,15 @@ public class CartUI {
         sortBox.setPrefHeight(45);
         sortBox.setPrefWidth(160);
         sortBox.setCursor(Cursor.HAND);
+        sortBox.setOnAction(e -> {
+            currentSort = sortBox.getValue() != null ? sortBox.getValue() : "Default";
+            loadCartItems(search_tf.getText().trim());
+        });
 
         HBox topBar = new HBox(8);
         HBox.setHgrow(searchBox, Priority.ALWAYS);
         topBar.setAlignment(Pos.CENTER);
-        topBar.getChildren().addAll(searchBox, filterBtn, sortBox);
+        topBar.getChildren().addAll(searchBox, filterBox, sortBox);
 
         SP.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         SP.setFitToWidth(true);

@@ -88,13 +88,15 @@ public class PackageDAO {
         if (name.isBlank() || priceStr.isBlank()) return -1;
         try {
             double price = Double.parseDouble(priceStr);
-            // Package IS an Item (ISA) — insert base Item row first
+            int defaultSupplierId = Admin_Logic.ensureDefaultSupplier(conn);
+            // Package IS an Item (ISA) — insert base Item row first, always owned by Bawabet Al-Quds
             PreparedStatement itemPs = conn.prepareStatement(
-                "INSERT INTO Item (name, item_type, price) VALUES (?, 'Package', ?)",
+                "INSERT INTO Item (name, item_type, price, supplier_id) VALUES (?, 'Package', ?, ?)",
                 Statement.RETURN_GENERATED_KEYS
             );
             itemPs.setString(1, name);
             itemPs.setDouble(2, price);
+            itemPs.setInt(3, defaultSupplierId);
             itemPs.executeUpdate();
             ResultSet keys = itemPs.getGeneratedKeys();
             if (!keys.next()) return -1;
