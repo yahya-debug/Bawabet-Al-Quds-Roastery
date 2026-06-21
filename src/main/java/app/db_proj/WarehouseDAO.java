@@ -59,6 +59,22 @@ public class WarehouseDAO {
         }
     }
 
+    public static WarehouseRow getById(Connection conn, int warehouseId) {
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT W.warehouse_id, W.name, L.street, L.city, L.zip " +
+                "FROM Warehouse W JOIN Location L ON W.location_id = L.location_id " +
+                "WHERE W.warehouse_id = ?"
+            );
+            ps.setInt(1, warehouseId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next())
+                return new WarehouseRow(rs.getInt("warehouse_id"), rs.getString("name"),
+                    rs.getString("street"), rs.getString("city"), rs.getString("zip"));
+        } catch (SQLException ex) { System.out.println(ex.getMessage()); }
+        return null;
+    }
+
     public static List<WarehouseRow> getAll(Connection conn) {
         List<WarehouseRow> list = new ArrayList<>();
         try {

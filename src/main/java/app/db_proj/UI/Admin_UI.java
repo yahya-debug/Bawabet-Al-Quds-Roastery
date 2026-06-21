@@ -34,8 +34,10 @@ public class Admin_UI {
     private VBox main_content, left_nav;
     private SystemHandling sys;
     private int adminBranchId = -1;
-    private boolean isFullAdmin;   // true for any admin (super or branch)
-    private boolean isSuperAdmin;  // true only for branch_id = 1
+    private boolean isFullAdmin;          // true for any admin (super or branch)
+    private boolean isSuperAdmin;         // true only for branch_id = 1
+    private boolean isWarehouseEmployee;  // true for warehouse-assigned employees
+    private int employeeWarehouseId = -1;
 
     private Button[] navBtns;
     private int[] sectionIndices;
@@ -68,8 +70,10 @@ public class Admin_UI {
         screen.setMaxHeight(Double.MAX_VALUE);
 
         if (sys.getCurrentUserId() != null) {
-            isFullAdmin  = sys.isUserAdmin();
-            isSuperAdmin = sys.isUserSuperAdmin();
+            isFullAdmin          = sys.isUserAdmin();
+            isSuperAdmin         = sys.isUserSuperAdmin();
+            isWarehouseEmployee  = sys.isUserWarehouseEmployee();
+            employeeWarehouseId  = sys.getEmployeeWarehouseId();
             adminBranchId = isFullAdmin
                 ? Admin_Logic.getAdminBranchId(sys.getConn(), sys.getCurrentUserId())
                 : Admin_Logic.getEmployeeBranchId(sys.getConn(), sys.getCurrentUserId());
@@ -81,7 +85,7 @@ public class Admin_UI {
         HBox.setMargin(left_nav, new Insets(14, 0, 14, 14));
         screen.getChildren().addAll(left_nav, main_content);
         screenRoot.getChildren().add(screen);
-        select_section(0);
+        select_section(sectionIndices[0]);
     }
 
     // ── LEFT NAV ─────────────────────────────────────────────────────────────
@@ -97,9 +101,10 @@ public class Admin_UI {
         )));
         left_nav.setMaxHeight(Double.MAX_VALUE);
 
-        String panelTitle = isSuperAdmin ? "Main Admin"
-                          : isFullAdmin  ? "Branch Admin"
-                          :                "Employee Portal";
+        String panelTitle = isSuperAdmin       ? "Main Admin"
+                          : isFullAdmin        ? "Branch Admin"
+                          : isWarehouseEmployee? "Warehouse Portal"
+                          :                      "Employee Portal";
         Label title = new Labels(panelTitle,
             Font.font("Adwaita Mono", FontWeight.BOLD, 21),
             Color.hsb(48, 1, 0.92, 1)).getLabel();
@@ -114,6 +119,9 @@ public class Admin_UI {
         } else if (isFullAdmin) {
             names = new String[]{"Branch", "Employees", "Orders"};
             sectionIndices = new int[]{0, 1, 5};
+        } else if (isWarehouseEmployee) {
+            names = new String[]{"My Warehouse", "Suppliers", "Employees"};
+            sectionIndices = new int[]{8, 4, 1};
         } else {
             names = new String[]{"Branch", "Employees", "Suppliers", "Orders"};
             sectionIndices = new int[]{0, 1, 4, 5};
@@ -273,23 +281,31 @@ public class Admin_UI {
         employeesSection.setPadding(new Insets(14, 0, 14, 14));
         VBox.setVgrow(employeesSection, Priority.ALWAYS);
 
-        HBox header = sectionHeader("Employees",
-            e -> showFormOverlay(makeRegistrationModalContent()));
+        HBox header = isWarehouseEmployee
+            ? sectionTitleOnly("Employees")
+            : sectionHeader("Employees", e -> showFormOverlay(makeRegistrationModalContent()));
 
         emp_cards_box = new VBox(10);
         emp_cards_box.setPadding(new Insets(2, 0, 10, 0));
 
-        ScrollPane scroll = cardScroll(emp_cards_box);
-
-        employeesSection.getChildren().addAll(header, scroll);
+        employeesSection.getChildren().addAll(header, cardScroll(emp_cards_box));
     }
 
     private void refresh_branch_employees() {
         if (emp_cards_box == null) return;
         emp_cards_box.getChildren().clear();
-        List<Admin_Logic.EmployeeRow> rows = isSuperAdmin
-            ? Admin_Logic.getEmployees(sys.getConn())
-            : (adminBranchId == -1 ? List.of() : Admin_Logic.getEmployeesByBranch(sys.getConn(), adminBranchId));
+        List<Admin_Logic.EmployeeRow> rows;
+        if (isSuperAdmin) {
+            rows = Admin_Logic.getEmployees(sys.getConn());
+        } else if (isWarehouseEmployee) {
+            rows = employeeWarehouseId == -1
+                ? List.of()
+                : Admin_Logic.getEmployeesByWarehouse(sys.getConn(), employeeWarehouseId);
+        } else {
+            rows = adminBranchId == -1
+                ? List.of()
+                : Admin_Logic.getEmployeesByBranch(sys.getConn(), adminBranchId);
+        }
         if (rows.isEmpty()) {
             emp_cards_box.getChildren().add(emptyLabel("No employees found"));
             return;
@@ -640,10 +656,12 @@ public class Admin_UI {
         details.getChildren().addAll(role, salary, hire);
         info.getChildren().addAll(name, details);
 
-        Label branchBadge = badge("Branch " + row.getBranchId(), Color.hsb(48, 1, 0.92, 1));
-        branchBadge.setTextFill(Color.BLACK);
+        Label assignBadge = row.isWarehouseEmployee()
+            ? badge("WH " + row.getWarehouseId(), Color.hsb(200, 0.6, 0.82, 1))
+            : badge("Branch " + row.getBranchId(), Color.hsb(48, 1, 0.92, 1));
+        if (!row.isWarehouseEmployee()) assignBadge.setTextFill(Color.BLACK);
 
-        card.getChildren().addAll(accent, info, branchBadge);
+        card.getChildren().addAll(accent, info, assignBadge);
         return card;
     }
 
@@ -1073,42 +1091,99 @@ public class Admin_UI {
         hire_date.setStyle("-fx-background-color: hsb(35, 12%, 20%); -fx-font-size: 14px;");
         hire_date.setMaxWidth(Double.MAX_VALUE);
 
-        ComboBox<Admin_Logic.BranchRow> branch_cb = isSuperAdmin ? branchCombo() : null;
+        if (!isSuperAdmin) {
+            // branch admin: register branch employee only
+            Button submit = submitBtn("Register Employee");
+            submit.setOnAction(e -> {
+                warn_empty.setVisible(false); warn_dup.setVisible(false); ok_msg.setVisible(false);
+                String dateStr = hire_date.getValue() != null ? hire_date.getValue().toString() : "";
+                String result = Admin_Logic.registerEmployee(
+                    sys.getConn(), name.getText(), email.getText(), password.getText(),
+                    role.getText(), salary.getText(), dateStr, adminBranchId);
+                if (result.equals("empty"))          warn_empty.setVisible(true);
+                else if (result.equals("duplicate")) warn_dup.setVisible(true);
+                else if (result.equals("ok")) {
+                    ok_msg.setVisible(true);
+                    name.clear(); email.clear(); password.clear(); role.clear(); salary.clear();
+                    hire_date.setValue(null);
+                    refresh_branch_employees();
+                }
+            });
+            form.getChildren().addAll(title, warn_empty, warn_dup, ok_msg,
+                name, email, password, role, salary, hire_date, submit);
+            return form;
+        }
+
+        // super admin: toggle between Branch and Warehouse employee
+        ComboBox<Admin_Logic.BranchRow>    branch_cb    = branchCombo();
+        ComboBox<WarehouseDAO.WarehouseRow> warehouse_cb = warehouseCombo();
+
+        // type toggle
+        HBox typeToggle = new HBox(0);
+        typeToggle.setBackground(new Background(new BackgroundFill(
+            Color.hsb(0, 0, 0.18, 1), new CornerRadii(10), null)));
+        typeToggle.setMaxWidth(Region.USE_PREF_SIZE);
+        Button branchBtn    = new Button("Branch");
+        Button warehouseBtn = new Button("Warehouse");
+        for (Button b : new Button[]{branchBtn, warehouseBtn}) {
+            b.setFont(Font.font("Nunito", 14));
+            b.setPadding(new Insets(7, 18, 7, 18));
+            b.setCursor(Cursor.HAND);
+            b.setStyle("-fx-background-color: transparent;");
+            b.setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+            b.setOnMouseEntered(ev -> { if (!Color.BLACK.equals(b.getTextFill())) b.setStyle("-fx-background-color: hsb(0,0%,28%); -fx-background-radius: 10;"); });
+            b.setOnMouseExited(ev -> { if (!Color.BLACK.equals(b.getTextFill())) b.setStyle("-fx-background-color: transparent;"); });
+        }
+        branchBtn.setStyle("-fx-background-color: hsb(48,100%,92%); -fx-background-radius: 10;");
+        branchBtn.setTextFill(Color.BLACK);
+        typeToggle.getChildren().addAll(branchBtn, warehouseBtn);
+
+        // holder that swaps between branch_cb and warehouse_cb
+        VBox assignHolder = new VBox();
+        assignHolder.getChildren().add(branch_cb);
+        boolean[] useBranch = {true};
+
+        branchBtn.setOnAction(e -> {
+            set_active_toggle(branchBtn, warehouseBtn);
+            useBranch[0] = true;
+            assignHolder.getChildren().setAll(branch_cb);
+        });
+        warehouseBtn.setOnAction(e -> {
+            set_active_toggle(warehouseBtn, branchBtn);
+            useBranch[0] = false;
+            assignHolder.getChildren().setAll(warehouse_cb);
+        });
 
         Button submit = submitBtn("Register Employee");
         submit.setOnAction(e -> {
-            warn_empty.setVisible(false);
-            warn_dup.setVisible(false);
-            ok_msg.setVisible(false);
-
-            Integer bId = isSuperAdmin
-                ? (branch_cb.getValue() != null ? branch_cb.getValue().branchId : null)
-                : adminBranchId;
+            warn_empty.setVisible(false); warn_dup.setVisible(false); ok_msg.setVisible(false);
             String dateStr = hire_date.getValue() != null ? hire_date.getValue().toString() : "";
-
-            String result = Admin_Logic.registerEmployee(
-                sys.getConn(), name.getText(), email.getText(), password.getText(),
-                role.getText(), salary.getText(), dateStr, bId);
-
+            String result;
+            if (useBranch[0]) {
+                Integer bId = branch_cb.getValue() != null ? branch_cb.getValue().branchId : null;
+                result = Admin_Logic.registerEmployee(
+                    sys.getConn(), name.getText(), email.getText(), password.getText(),
+                    role.getText(), salary.getText(), dateStr, bId);
+            } else {
+                Integer wId = warehouse_cb.getValue() != null ? warehouse_cb.getValue().warehouseId : null;
+                result = Admin_Logic.registerWarehouseEmployee(
+                    sys.getConn(), name.getText(), email.getText(), password.getText(),
+                    role.getText(), salary.getText(), dateStr, wId);
+            }
             if (result.equals("empty"))          warn_empty.setVisible(true);
             else if (result.equals("duplicate")) warn_dup.setVisible(true);
             else if (result.equals("ok")) {
                 ok_msg.setVisible(true);
-                name.clear(); email.clear(); password.clear();
-                role.clear(); salary.clear();
+                name.clear(); email.clear(); password.clear(); role.clear(); salary.clear();
                 hire_date.setValue(null);
-                if (branch_cb != null) branch_cb.getSelectionModel().clearSelection();
+                branch_cb.getSelectionModel().clearSelection();
+                warehouse_cb.getSelectionModel().clearSelection();
                 refresh_branch_employees();
             }
         });
 
-        if (isSuperAdmin) {
-            form.getChildren().addAll(title, warn_empty, warn_dup, ok_msg,
-                name, email, password, role, salary, hire_date, branch_cb, submit);
-        } else {
-            form.getChildren().addAll(title, warn_empty, warn_dup, ok_msg,
-                name, email, password, role, salary, hire_date, submit);
-        }
+        form.getChildren().addAll(title, warn_empty, warn_dup, ok_msg,
+            typeToggle, name, email, password, role, salary, hire_date, assignHolder, submit);
         return form;
     }
 
@@ -1394,6 +1469,25 @@ public class Admin_UI {
         return cb;
     }
 
+    private ComboBox<WarehouseDAO.WarehouseRow> warehouseCombo() {
+        ComboBox<WarehouseDAO.WarehouseRow> cb = new ComboBox<>();
+        cb.setPromptText("Warehouse");
+        cb.setMaxWidth(Double.MAX_VALUE);
+        cb.setPrefHeight(36);
+        cb.setBackground(new Background(new BackgroundFill(
+            Color.hsb(35, 0.12, 0.20, 1), new CornerRadii(7), null)));
+        cb.setButtonCell(new ListCell<>() {
+            @Override protected void updateItem(WarehouseDAO.WarehouseRow item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? cb.getPromptText() : item.name);
+                setTextFill(Color.hsb(30, 0.12, 0.78, 1));
+                setStyle("-fx-font-size: 15px; -fx-background-color: transparent;");
+            }
+        });
+        cb.setItems(FXCollections.observableArrayList(WarehouseDAO.getAll(sys.getConn())));
+        return cb;
+    }
+
     private ComboBox<Admin_Logic.SupplierRow> supplierCombo(int selectedSupplierId) {
         ComboBox<Admin_Logic.SupplierRow> cb = new ComboBox<>();
         cb.setPromptText("Supplier");
@@ -1618,7 +1712,7 @@ public class Admin_UI {
         statusHeading.setTextFill(Color.hsb(30, 0.12, 0.72, 1));
 
         javafx.scene.control.ComboBox<String> statusBox = new javafx.scene.control.ComboBox<>(
-            javafx.collections.FXCollections.observableArrayList("pending", "processing", "shipped", "delivered", "cancelled")
+            javafx.collections.FXCollections.observableArrayList("pending", "delivered")
         );
         statusBox.setValue(order.status);
         statusBox.setMaxWidth(Double.MAX_VALUE);
@@ -1642,12 +1736,9 @@ public class Admin_UI {
 
     private Color statusColor(String status) {
         return switch (status) {
-            case "pending"    -> Color.hsb(30, 0.85, 0.85, 1);
-            case "processing" -> Color.hsb(48, 0.90, 0.88, 1);
-            case "shipped"    -> Color.hsb(200, 0.65, 0.80, 1);
-            case "delivered"  -> Color.hsb(120, 0.50, 0.72, 1);
-            case "cancelled"  -> Color.hsb(0, 0.70, 0.72, 1);
-            default           -> Color.hsb(0, 0, 0.55, 1);
+            case "pending"   -> Color.hsb(30,  0.85, 0.85, 1);
+            case "delivered" -> Color.hsb(120, 0.50, 0.72, 1);
+            default          -> Color.hsb(0,   0,    0.55, 1);
         };
     }
 
@@ -1947,7 +2038,9 @@ public class Admin_UI {
         warehouseSection.setPadding(new Insets(14, 0, 14, 14));
         VBox.setVgrow(warehouseSection, Priority.ALWAYS);
 
-        HBox header = sectionHeader("Warehouses", e -> showFormOverlay(make_warehouse_form()));
+        HBox header = isWarehouseEmployee
+            ? sectionTitleOnly("My Warehouse")
+            : sectionHeader("Warehouses", e -> showFormOverlay(make_warehouse_form()));
         warehouse_cards_box = new VBox(10);
         warehouse_cards_box.setPadding(new Insets(2, 0, 10, 0));
 
@@ -1957,6 +2050,18 @@ public class Admin_UI {
     private void refresh_warehouses() {
         if (warehouse_cards_box == null) return;
         warehouse_cards_box.getChildren().clear();
+
+        if (isWarehouseEmployee) {
+            if (employeeWarehouseId == -1) {
+                warehouse_cards_box.getChildren().add(emptyLabel("No warehouse assigned"));
+                return;
+            }
+            WarehouseDAO.WarehouseRow w = WarehouseDAO.getById(sys.getConn(), employeeWarehouseId);
+            if (w != null) warehouse_cards_box.getChildren().add(makeWarehouseCard(w));
+            else warehouse_cards_box.getChildren().add(emptyLabel("Warehouse not found"));
+            return;
+        }
+
         List<WarehouseDAO.WarehouseRow> rows = WarehouseDAO.getAll(sys.getConn());
         if (rows.isEmpty()) {
             warehouse_cards_box.getChildren().add(emptyLabel("No warehouses yet"));

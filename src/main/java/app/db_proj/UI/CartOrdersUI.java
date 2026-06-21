@@ -197,12 +197,9 @@ public class CartOrdersUI {
     private static Color statusColor(String status) {
         if (status == null) return Color.hsb(30, 0.12, 0.65, 1);
         return switch (status.toLowerCase()) {
-            case "pending"    -> Color.hsb(48, 0.9, 0.88, 1);
-            case "processing" -> Color.hsb(200, 0.7, 0.80, 1);
-            case "shipped"    -> Color.hsb(220, 0.6, 0.82, 1);
-            case "delivered"  -> Color.hsb(120, 0.6, 0.72, 1);
-            case "cancelled"  -> Color.hsb(0, 0.7, 0.78, 1);
-            default           -> Color.hsb(30, 0.12, 0.65, 1);
+            case "pending"   -> Color.hsb(48,  0.9, 0.88, 1);
+            case "delivered" -> Color.hsb(120, 0.6, 0.72, 1);
+            default          -> Color.hsb(30,  0.12, 0.65, 1);
         };
     }
 }

@@ -34,25 +34,30 @@ public class Admin_Logic {
         private final String role;
         private final double salary;
         private final String hireDate;
-        private final int branchId;
+        private final int branchId;      // -1 if this is a warehouse employee
+        private final int warehouseId;   // -1 if this is a branch employee
 
-        public EmployeeRow(int personId, String name, String email, String role, double salary, String hireDate, int branchId) {
-            this.personId = personId;
-            this.name = name;
-            this.email = email;
-            this.role = role;
-            this.salary = salary;
-            this.hireDate = hireDate;
-            this.branchId = branchId;
+        public EmployeeRow(int personId, String name, String email, String role,
+                           double salary, String hireDate, int branchId, int warehouseId) {
+            this.personId    = personId;
+            this.name        = name;
+            this.email       = email;
+            this.role        = role;
+            this.salary      = salary;
+            this.hireDate    = hireDate;
+            this.branchId    = branchId;
+            this.warehouseId = warehouseId;
         }
 
-        public int getPersonId() { return personId; }
-        public String getName() { return name; }
-        public String getEmail() { return email; }
-        public String getRole() { return role; }
-        public double getSalary() { return salary; }
-        public String getHireDate() { return hireDate; }
-        public int getBranchId() { return branchId; }
+        public int    getPersonId()    { return personId; }
+        public String getName()        { return name; }
+        public String getEmail()       { return email; }
+        public String getRole()        { return role; }
+        public double getSalary()      { return salary; }
+        public String getHireDate()    { return hireDate; }
+        public int    getBranchId()    { return branchId; }
+        public int    getWarehouseId() { return warehouseId; }
+        public boolean isWarehouseEmployee() { return warehouseId != -1; }
     }
 
     // small holder for one branch entry used by the branch combobox
@@ -152,18 +157,17 @@ public class Admin_Logic {
         try {
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(
-                "SELECT P.person_id, P.name, P.email, E.role, E.salary, E.hire_date, E.branch_id " +
+                "SELECT P.person_id, P.name, P.email, E.role, E.salary, E.hire_date, " +
+                "       E.branch_id, E.warehouse_id " +
                 "FROM Person P JOIN Employee E ON P.person_id = E.person_id;"
             );
             while (rs.next()) {
+                int bId = rs.getInt("branch_id");    boolean bNull = rs.wasNull();
+                int wId = rs.getInt("warehouse_id"); boolean wNull = rs.wasNull();
                 list.add(new EmployeeRow(
-                    rs.getInt("person_id"),
-                    rs.getString("name"),
-                    rs.getString("email"),
-                    rs.getString("role"),
-                    rs.getDouble("salary"),
-                    rs.getString("hire_date"),
-                    rs.getInt("branch_id")
+                    rs.getInt("person_id"), rs.getString("name"), rs.getString("email"),
+                    rs.getString("role"),   rs.getDouble("salary"), rs.getString("hire_date"),
+                    bNull ? -1 : bId, wNull ? -1 : wId
                 ));
             }
         } catch (SQLException ex) {
@@ -216,7 +220,7 @@ public class Admin_Logic {
         return false;
     }
 
-    // return the branch_id where the given employee works, or -1 if not found
+    // return the branch_id where the given employee works, or -1 if not found / is warehouse employee
     public static int getEmployeeBranchId(Connection conn, int personId) {
         try {
             PreparedStatement ps = conn.prepareStatement(
@@ -224,7 +228,26 @@ public class Admin_Logic {
             );
             ps.setInt(1, personId);
             ResultSet rs = ps.executeQuery();
-            if (rs.next()) return rs.getInt("branch_id");
+            if (rs.next()) {
+                int bId = rs.getInt("branch_id");
+                return rs.wasNull() ? -1 : bId;
+            }
+        } catch (SQLException ex) { System.out.println(ex.getMessage()); }
+        return -1;
+    }
+
+    // return the warehouse_id where the given employee works, or -1 if not found / is branch employee
+    public static int getEmployeeWarehouseId(Connection conn, int personId) {
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT warehouse_id FROM Employee WHERE person_id = ?"
+            );
+            ps.setInt(1, personId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                int wId = rs.getInt("warehouse_id");
+                return rs.wasNull() ? -1 : wId;
+            }
         } catch (SQLException ex) { System.out.println(ex.getMessage()); }
         return -1;
     }
@@ -298,21 +321,47 @@ public class Admin_Logic {
         List<EmployeeRow> list = new ArrayList<>();
         try {
             PreparedStatement ps = conn.prepareStatement(
-                "SELECT P.person_id, P.name, P.email, E.role, E.salary, E.hire_date, E.branch_id " +
+                "SELECT P.person_id, P.name, P.email, E.role, E.salary, E.hire_date, " +
+                "       E.branch_id, E.warehouse_id " +
                 "FROM Person P JOIN Employee E ON P.person_id = E.person_id " +
                 "WHERE E.branch_id = ?"
             );
             ps.setInt(1, branchId);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
+                int bId = rs.getInt("branch_id");    boolean bNull = rs.wasNull();
+                int wId = rs.getInt("warehouse_id"); boolean wNull = rs.wasNull();
                 list.add(new EmployeeRow(
-                    rs.getInt("person_id"),
-                    rs.getString("name"),
-                    rs.getString("email"),
-                    rs.getString("role"),
-                    rs.getDouble("salary"),
-                    rs.getString("hire_date"),
-                    rs.getInt("branch_id")
+                    rs.getInt("person_id"), rs.getString("name"), rs.getString("email"),
+                    rs.getString("role"),   rs.getDouble("salary"), rs.getString("hire_date"),
+                    bNull ? -1 : bId, wNull ? -1 : wId
+                ));
+            }
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+        }
+        return list;
+    }
+
+    // fetch employees assigned to the given warehouse
+    public static List<EmployeeRow> getEmployeesByWarehouse(Connection conn, int warehouseId) {
+        List<EmployeeRow> list = new ArrayList<>();
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT P.person_id, P.name, P.email, E.role, E.salary, E.hire_date, " +
+                "       E.branch_id, E.warehouse_id " +
+                "FROM Person P JOIN Employee E ON P.person_id = E.person_id " +
+                "WHERE E.warehouse_id = ?"
+            );
+            ps.setInt(1, warehouseId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                int bId = rs.getInt("branch_id");    boolean bNull = rs.wasNull();
+                int wId = rs.getInt("warehouse_id"); boolean wNull = rs.wasNull();
+                list.add(new EmployeeRow(
+                    rs.getInt("person_id"), rs.getString("name"), rs.getString("email"),
+                    rs.getString("role"),   rs.getDouble("salary"), rs.getString("hire_date"),
+                    bNull ? -1 : bId, wNull ? -1 : wId
                 ));
             }
         } catch (SQLException ex) {
@@ -721,7 +770,7 @@ public class Admin_Logic {
         }
     }
 
-    // insert a new employee in two steps, first into Person then into Employee
+    // insert a new branch employee in two steps: Person then Employee
     // returns ok, empty, duplicate, or error
     public static String registerEmployee(Connection conn, String name, String email, String password,
                                           String role, String salary, String hireDate, Integer branchId) {
@@ -729,27 +778,82 @@ public class Admin_Logic {
                 || salary.isEmpty() || hireDate.isEmpty() || branchId == null)
             return "empty";
         try {
-            // insert the person row first and grab the generated id
             PreparedStatement personStmt = conn.prepareStatement(
-                "INSERT INTO Person (name, email, password) VALUES ('" + name + "','" + email + "','" + password + "');",
+                "INSERT INTO Person (name, email, password) VALUES (?, ?, ?)",
                 Statement.RETURN_GENERATED_KEYS
             );
+            personStmt.setString(1, name); personStmt.setString(2, email); personStmt.setString(3, password);
             personStmt.executeUpdate();
             ResultSet keys = personStmt.getGeneratedKeys();
-            int personId = -1;
-            if (keys.next()) personId = keys.getInt(1);
+            if (!keys.next()) return "error";
+            int personId = keys.getInt(1);
 
-            // then insert the employee row pointing at that person id
-            Statement empStmt = conn.createStatement();
-            empStmt.executeUpdate(
-                "INSERT INTO Employee (person_id, role, salary, hire_date, branch_id) VALUES (" +
-                personId + ",'" + role + "'," + salary + ",'" + hireDate + "'," + branchId + ");"
+            PreparedStatement empStmt = conn.prepareStatement(
+                "INSERT INTO Employee (person_id, role, salary, hire_date, branch_id) VALUES (?, ?, ?, ?, ?)"
             );
+            empStmt.setInt(1, personId);    empStmt.setString(2, role);
+            empStmt.setDouble(3, Double.parseDouble(salary)); empStmt.setString(4, hireDate);
+            empStmt.setInt(5, branchId);
+            empStmt.executeUpdate();
             return "ok";
         } catch (SQLException ex) {
             System.out.println(ex.getMessage());
             if ("23000".equals(ex.getSQLState())) return "duplicate";
             return "error";
         }
+    }
+
+    // insert a new warehouse employee; identical flow but sets warehouse_id instead of branch_id
+    public static String registerWarehouseEmployee(Connection conn, String name, String email,
+                                                   String password, String role, String salary,
+                                                   String hireDate, Integer warehouseId) {
+        if (name.isEmpty() || email.isEmpty() || password.isEmpty() || role.isEmpty()
+                || salary.isEmpty() || hireDate.isEmpty() || warehouseId == null)
+            return "empty";
+        try {
+            PreparedStatement personStmt = conn.prepareStatement(
+                "INSERT INTO Person (name, email, password) VALUES (?, ?, ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            personStmt.setString(1, name); personStmt.setString(2, email); personStmt.setString(3, password);
+            personStmt.executeUpdate();
+            ResultSet keys = personStmt.getGeneratedKeys();
+            if (!keys.next()) return "error";
+            int personId = keys.getInt(1);
+
+            PreparedStatement empStmt = conn.prepareStatement(
+                "INSERT INTO Employee (person_id, role, salary, hire_date, warehouse_id) VALUES (?, ?, ?, ?, ?)"
+            );
+            empStmt.setInt(1, personId);    empStmt.setString(2, role);
+            empStmt.setDouble(3, Double.parseDouble(salary)); empStmt.setString(4, hireDate);
+            empStmt.setInt(5, warehouseId);
+            empStmt.executeUpdate();
+            return "ok";
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+            if ("23000".equals(ex.getSQLState())) return "duplicate";
+            return "error";
+        }
+    }
+
+    // migrate existing Employee table to support warehouse employees (idempotent)
+    public static void migrateEmployeeSchema(Connection conn) {
+        try {
+            conn.createStatement().executeUpdate(
+                "ALTER TABLE Employee ADD COLUMN warehouse_id INT DEFAULT NULL"
+            );
+        } catch (SQLException ignored) { /* column already exists */ }
+        try {
+            conn.createStatement().executeUpdate(
+                "ALTER TABLE Employee MODIFY COLUMN branch_id INT DEFAULT NULL"
+            );
+        } catch (SQLException ex) { System.out.println("migrateEmployeeSchema: " + ex.getMessage()); }
+        try {
+            conn.createStatement().executeUpdate(
+                "ALTER TABLE Employee ADD CONSTRAINT fk_employee_warehouse " +
+                "FOREIGN KEY (warehouse_id) REFERENCES Warehouse(warehouse_id) " +
+                "ON DELETE NO ACTION ON UPDATE NO ACTION"
+            );
+        } catch (SQLException ignored) { /* already exists */ }
     }
 }

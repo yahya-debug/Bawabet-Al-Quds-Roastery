@@ -2,7 +2,6 @@ package app.db_proj;
 
 import app.db_proj.model.Order;
 import app.db_proj.model.OrderItem;
-import app.db_proj.model.Payment;
 import app.db_proj.model.Review;
 
 import java.sql.*;
@@ -77,24 +76,16 @@ public class OrderDAO {
                     itemPs.executeUpdate();
                 }
 
-                // auto-assign delivery to employee from this branch
-                if (branchId > 0) {
-                    PreparedStatement empPs = conn.prepareStatement(
-                        "SELECT person_id FROM Employee WHERE branch_id = ? LIMIT 1"
-                    );
-                    empPs.setInt(1, branchId);
-                    ResultSet empRs = empPs.executeQuery();
-                    Integer empId = empRs.next() ? empRs.getInt("person_id") : null;
-
-                    PreparedStatement delivPs = conn.prepareStatement(
-                        "INSERT INTO Delivery (order_id, address, employee_id) VALUES (?, ?, ?)"
-                    );
-                    delivPs.setInt(1, orderId);
-                    delivPs.setString(2, "Branch delivery – branch #" + branchId);
-                    if (empId != null) delivPs.setInt(3, empId);
-                    else delivPs.setNull(3, Types.INTEGER);
-                    delivPs.executeUpdate();
-                }
+                // create delivery record (status defaults to 'pending')
+                PreparedStatement delivPs = conn.prepareStatement(
+                    "INSERT INTO Delivery (order_id, address) VALUES (?, ?)"
+                );
+                delivPs.setInt(1, orderId);
+                String addr = branchId > 0
+                    ? "Branch delivery – branch #" + branchId
+                    : "Pickup";
+                delivPs.setString(2, addr);
+                delivPs.executeUpdate();
 
                 ordersCreated++;
             }
@@ -268,47 +259,6 @@ public class OrderDAO {
             System.out.println(ex.getMessage());
             return false;
         }
-    }
-
-    // record a payment for an order
-    public static boolean recordPayment(Connection conn, int orderId, double amount, String method) {
-        try {
-            PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO Payment (order_id, amount, method) VALUES (?, ?, ?)"
-            );
-            ps.setInt(1, orderId);
-            ps.setDouble(2, amount);
-            ps.setString(3, method);
-            ps.executeUpdate();
-            return true;
-        } catch (SQLException ex) {
-            System.out.println(ex.getMessage());
-            return false;
-        }
-    }
-
-    // fetch payments for an order
-    public static List<Payment> getPayments(Connection conn, int orderId) {
-        List<Payment> payments = new ArrayList<>();
-        try {
-            PreparedStatement ps = conn.prepareStatement(
-                "SELECT payment_id, order_id, amount, method, paid_at FROM Payment WHERE order_id = ?"
-            );
-            ps.setInt(1, orderId);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                payments.add(new Payment(
-                    rs.getInt("payment_id"),
-                    rs.getInt("order_id"),
-                    rs.getDouble("amount"),
-                    rs.getString("method"),
-                    rs.getTimestamp("paid_at").toLocalDateTime()
-                ));
-            }
-        } catch (SQLException ex) {
-            System.out.println(ex.getMessage());
-        }
-        return payments;
     }
 
     // submit a review for an item; one review per person per item enforced at DB level

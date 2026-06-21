@@ -36,6 +36,8 @@ public class SystemHandling {
     private boolean userIsAdmin;
     private boolean userIsSuperAdmin;
     private boolean userIsEmployee;
+    private boolean userIsWarehouseEmployee;
+    private int employeeWarehouseId = -1;
     private int selectedBranchId = -1; // -1 = All branches
 
 
@@ -56,6 +58,7 @@ public class SystemHandling {
         Admin_Logic.ensureItemImageColumn(conn);
         Admin_Logic.ensureSupplierTable(conn); // also calls ensureDefaultSupplier internally
         WarehouseDAO.ensureTables(conn);
+        Admin_Logic.migrateEmployeeSchema(conn);
 
         // wire the nav-bar search to the home page item filter
         Top.setSearchAction(q -> home_page.search(q));
@@ -154,7 +157,11 @@ public class SystemHandling {
         System.out.println(Profile_Logic.isAdmin(conn, id));
         this.userIsAdmin = Profile_Logic.isAdmin(conn, id);
         this.userIsSuperAdmin = userIsAdmin && Admin_Logic.isSuperAdmin(conn, id);
-        this.userIsEmployee = Admin_Logic.getEmployeeBranchId(conn, id) != -1;
+        int bId = Admin_Logic.getEmployeeBranchId(conn, id);
+        int wId = Admin_Logic.getEmployeeWarehouseId(conn, id);
+        this.userIsEmployee = bId != -1;
+        this.userIsWarehouseEmployee = wId != -1;
+        this.employeeWarehouseId = wId;
         if (Top != null) Top.refreshAuth();
     }
 
@@ -170,8 +177,16 @@ public class SystemHandling {
         return userIsEmployee;
     }
 
+    public boolean isUserWarehouseEmployee() {
+        return userIsWarehouseEmployee;
+    }
+
+    public int getEmployeeWarehouseId() {
+        return employeeWarehouseId;
+    }
+
     public boolean canAccessPanel() {
-        return userIsAdmin || userIsEmployee;
+        return userIsAdmin || userIsEmployee || userIsWarehouseEmployee;
     }
 
     public void logout() {
@@ -182,6 +197,8 @@ public class SystemHandling {
         userIsAdmin = false;
         userIsSuperAdmin = false;
         userIsEmployee = false;
+        userIsWarehouseEmployee = false;
+        employeeWarehouseId = -1;
         admin_page = null;
         // only close the profile overlay if it's actually open
         if (screen.getChildren().size() > 1) hideProf();
