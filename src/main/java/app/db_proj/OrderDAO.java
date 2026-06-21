@@ -14,6 +14,10 @@ public class OrderDAO {
 
     // Place orders from cart, one per branch. Returns number of orders created, or -1 on failure.
     public static int placeOrder(Connection conn, int personId) {
+        return placeOrder(conn, personId, 1.0);
+    }
+
+    public static int placeOrder(Connection conn, int personId, double discountFactor) {
         try {
             conn.setAutoCommit(false);
 
@@ -47,7 +51,7 @@ public class OrderDAO {
             for (Map.Entry<Integer, List<Object[]>> entry : linesByBranch.entrySet()) {
                 int branchId = entry.getKey();
                 List<Object[]> lines = entry.getValue();
-                double total = totalByBranch.get(branchId);
+                double total = totalByBranch.get(branchId) * discountFactor;
 
                 PreparedStatement orderPs = conn.prepareStatement(
                     "INSERT INTO `Order` (person_id, branch_id, total) VALUES (?, ?, ?)",

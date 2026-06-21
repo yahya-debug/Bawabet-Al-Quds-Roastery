@@ -1,5 +1,6 @@
 package app.db_proj.UI;
 
+import app.db_proj.Admin_Logic;
 import app.db_proj.Cart_Logic;
 import app.db_proj.Labels;
 import app.db_proj.OrderDAO;
@@ -29,11 +30,15 @@ public class CartUI {
     private SystemHandling sys;
     private Region spacer;
     private Label total_price_lbl;
+    private Label discount_status_lbl;
+    private TextField discount_code_tf;
     private TextField search_tf;
     private ComboBox<String> sortBox;
     private ComboBox<String> filterBox;
     private String currentSort   = "Default";
     private String currentFilter = "All";
+    private double discountFactor = 1.0;
+    private double rawCartTotal   = 0.0;
 
     public CartUI(SystemHandling sys) {
         this.sys = sys;
@@ -53,8 +58,11 @@ public class CartUI {
     public void refresh() {
         currentSort   = "Default";
         currentFilter = "All";
-        if (sortBox   != null) sortBox.setValue("Default");
-        if (filterBox != null) filterBox.setValue("All");
+        discountFactor = 1.0;
+        if (sortBox             != null) sortBox.setValue("Default");
+        if (filterBox           != null) filterBox.setValue("All");
+        if (discount_code_tf    != null) discount_code_tf.clear();
+        if (discount_status_lbl != null) { discount_status_lbl.setText(""); discount_status_lbl.setVisible(false); }
         loadCartItems("");
         refreshOrders();
         if (search_tf != null) search_tf.clear();
@@ -188,8 +196,9 @@ public class CartUI {
     }
 
     private void updateTotal(double total) {
+        rawCartTotal = total;
         if (total_price_lbl != null)
-            total_price_lbl.setText(String.format("₪ %.2f", total));
+            total_price_lbl.setText(String.format("₪ %.2f", total * discountFactor));
     }
 
     private void make_cart_side() {
@@ -358,6 +367,45 @@ public class CartUI {
             Color.hsb(48, 1, 0.92, 1), BorderStrokeStyle.SOLID, null, new BorderWidths(0, 0, 2, 0))));
         payment_box.setCenter(form_in_box);
 
+        // ── Discount code row ──────────────────────────────────────────────────
+        discount_code_tf = payField("Discount Code");
+        discount_status_lbl = new Label("");
+        discount_status_lbl.setFont(Font.font("Nunito", 13));
+        discount_status_lbl.setVisible(false);
+        discount_status_lbl.managedProperty().bind(discount_status_lbl.visibleProperty());
+
+        Button applyDiscountBtn = new Button("Apply");
+        applyDiscountBtn.setFont(Font.font("Nunito", FontWeight.BOLD, 14));
+        applyDiscountBtn.setPadding(new Insets(8, 16, 8, 16));
+        applyDiscountBtn.setCursor(Cursor.HAND);
+        applyDiscountBtn.setStyle("-fx-background-color: hsb(48,100%,92%); -fx-background-radius: 8; -fx-text-fill: black;");
+        applyDiscountBtn.setOnMouseEntered(ev -> applyDiscountBtn.setStyle("-fx-background-color: hsb(48,100%,75%); -fx-background-radius: 8; -fx-text-fill: black;"));
+        applyDiscountBtn.setOnMouseExited(ev -> applyDiscountBtn.setStyle("-fx-background-color: hsb(48,100%,92%); -fx-background-radius: 8; -fx-text-fill: black;"));
+        applyDiscountBtn.setOnAction(ev -> {
+            discount_status_lbl.setVisible(false);
+            String code = discount_code_tf.getText().trim();
+            if (code.isBlank()) return;
+            Admin_Logic.DiscountRow d = Admin_Logic.lookupDiscount(sys.getConn(), code);
+            if (d == null) {
+                discountFactor = 1.0;
+                discount_status_lbl.setTextFill(Color.hsb(0, 0.7, 0.75, 1));
+                discount_status_lbl.setText("Invalid or expired code");
+            } else {
+                discountFactor = 1.0 - (d.getPercent() / 100.0);
+                discount_status_lbl.setTextFill(Color.hsb(120, 0.5, 0.75, 1));
+                discount_status_lbl.setText(String.format("%.0f%% off applied!", d.getPercent()));
+            }
+            discount_status_lbl.setVisible(true);
+            updateTotal(rawCartTotal);
+        });
+
+        HBox discountRow = new HBox(8);
+        discountRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(discount_code_tf, Priority.ALWAYS);
+        discountRow.getChildren().addAll(discount_code_tf, applyDiscountBtn);
+        VBox discountBox = new VBox(4, discountRow, discount_status_lbl);
+        VBox.setMargin(discountBox, new Insets(6, 0, 0, 0));
+
         VBox bottom = new VBox(7);
         HBox total = new HBox();
         VBox.setMargin(total, new Insets(7, 0, 0, 0));
@@ -376,8 +424,11 @@ public class CartUI {
         order_btn.setOnAction(e -> {
             Integer uid = sys.getCurrentUserId();
             if (uid == null) return;
-            int orderId = OrderDAO.placeOrder(sys.getConn(), uid);
+            int orderId = OrderDAO.placeOrder(sys.getConn(), uid, discountFactor);
             if (orderId > 0) {
+                discountFactor = 1.0;
+                if (discount_code_tf    != null) discount_code_tf.clear();
+                if (discount_status_lbl != null) discount_status_lbl.setVisible(false);
                 loadCartItems("");
                 refreshOrders();
                 updateTotal(0.0);
@@ -385,7 +436,7 @@ public class CartUI {
             }
         });
 
-        bottom.getChildren().addAll(total, order_btn);
+        bottom.getChildren().addAll(discountBox, total, order_btn);
         payment_box.setBottom(bottom);
     }
 

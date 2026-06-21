@@ -45,7 +45,7 @@ public class Admin_UI {
     // section roots
     private VBox branchSection, employeesSection, usersSection, itemsSection,
                  suppliersSection, ordersSection, reportsSection, packagesSection,
-                 warehouseSection;
+                 warehouseSection, discountSection;
 
     // card list containers
     private VBox branch_cards_box;
@@ -58,6 +58,7 @@ public class Admin_UI {
     private VBox package_cards_box;
 
     private VBox warehouse_cards_box;
+    private VBox discount_cards_box;
 
     // branch section detail box (for admin's own branch)
     private VBox branch_detail_box;
@@ -114,8 +115,8 @@ public class Admin_UI {
 
         String[] names;
         if (isSuperAdmin) {
-            names = new String[]{"Branch", "Employees", "Users", "Items", "Suppliers", "Orders", "Reports", "Packages", "Warehouses"};
-            sectionIndices = new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8};
+            names = new String[]{"Branch", "Employees", "Users", "Items", "Suppliers", "Orders", "Reports", "Packages", "Warehouses", "Discounts"};
+            sectionIndices = new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
         } else if (isFullAdmin) {
             names = new String[]{"Branch", "Employees", "Orders"};
             sectionIndices = new int[]{0, 1, 5};
@@ -204,11 +205,12 @@ public class Admin_UI {
             case 6 -> refresh_reports();
             case 7 -> refresh_packages();
             case 8 -> refresh_warehouses();
+            case 9 -> refresh_discounts();
         }
 
         VBox[] sections = {branchSection, employeesSection, usersSection, itemsSection,
                            suppliersSection, ordersSection, reportsSection, packagesSection,
-                           warehouseSection};
+                           warehouseSection, discountSection};
         main_content.getChildren().setAll(sections[sectionIdx]);
         VBox.setVgrow(sections[sectionIdx], Priority.ALWAYS);
     }
@@ -230,6 +232,7 @@ public class Admin_UI {
         build_reports_section();
         build_packages_section();
         build_warehouse_section();
+        build_discount_section();
     }
 
     // ── BRANCH SECTION ───────────────────────────────────────────────────────
@@ -2303,6 +2306,109 @@ public class Admin_UI {
             }
         });
         form.getChildren().addAll(title, nameF, streetF, cityF, zipF, ok, err, submit);
+        return form;
+    }
+
+    // ── DISCOUNTS SECTION ────────────────────────────────────────────────────
+
+    private void build_discount_section() {
+        discountSection = new VBox(12);
+        discountSection.setPadding(new Insets(14, 0, 14, 14));
+        VBox.setVgrow(discountSection, Priority.ALWAYS);
+
+        HBox header = sectionHeader("Discounts", e -> showFormOverlay(make_discount_form()));
+        discount_cards_box = new VBox(10);
+        discount_cards_box.setPadding(new Insets(2, 0, 10, 0));
+        discountSection.getChildren().addAll(header, cardScroll(discount_cards_box));
+    }
+
+    private void refresh_discounts() {
+        if (discount_cards_box == null) return;
+        discount_cards_box.getChildren().clear();
+        List<Admin_Logic.DiscountRow> rows = Admin_Logic.getDiscounts(sys.getConn());
+        if (rows.isEmpty()) {
+            discount_cards_box.getChildren().add(emptyLabel("No discounts yet"));
+            return;
+        }
+        for (Admin_Logic.DiscountRow row : rows)
+            discount_cards_box.getChildren().add(makeDiscountCard(row));
+    }
+
+    private HBox makeDiscountCard(Admin_Logic.DiscountRow row) {
+        HBox card = baseCard();
+        Region accent = accentBar(Color.hsb(150, 0.60, 0.70, 1));
+
+        VBox info = new VBox(4);
+        HBox.setHgrow(info, Priority.ALWAYS);
+
+        Label code = cardTitle(row.getCode());
+        String detail = String.format("%.0f%% off", row.getPercent());
+        if (row.getValidUntil() != null) detail += "  ·  expires " + row.getValidUntil();
+        if (row.getMaxUses() != null)    detail += "  ·  max " + row.getMaxUses() + " uses";
+        Label sub = cardSub(detail);
+        info.getChildren().addAll(code, sub);
+
+        Label pctBadge = badge(String.format("%.0f%%", row.getPercent()), Color.hsb(150, 0.60, 0.70, 1));
+        pctBadge.setTextFill(Color.BLACK);
+
+        Button deleteBtn = new Button("🗑");
+        deleteBtn.setStyle("-fx-background-color: hsb(0,55%,60%,0.7); -fx-background-radius: 7; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 4 8 4 8;");
+        deleteBtn.setCursor(Cursor.HAND);
+        deleteBtn.setOnMouseEntered(ev -> deleteBtn.setStyle("-fx-background-color: hsb(0,70%,70%); -fx-background-radius: 7; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 4 8 4 8;"));
+        deleteBtn.setOnMouseExited(ev -> deleteBtn.setStyle("-fx-background-color: hsb(0,55%,60%,0.7); -fx-background-radius: 7; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 4 8 4 8;"));
+        deleteBtn.setOnAction(ev -> {
+            ev.consume();
+            if (Admin_Logic.deleteDiscount(sys.getConn(), row.getDiscountId()))
+                refresh_discounts();
+        });
+
+        card.getChildren().addAll(accent, info, pctBadge, deleteBtn);
+        return card;
+    }
+
+    private VBox make_discount_form() {
+        VBox form = formShell();
+
+        Label title      = formTitle("Add Discount Code");
+        Label warn_empty = statusLabel("Code and percent are required", Color.RED);
+        Label warn_pct   = statusLabel("Percent must be 0–100", Color.RED);
+        Label warn_dup   = statusLabel("Code already exists", Color.RED);
+        Label ok_msg     = statusLabel("Discount added!", Color.hsb(120, 0.5, 0.85, 1));
+        Label err_msg    = statusLabel("An error occurred", Color.RED);
+
+        TextField codeField    = formField("Code (e.g. SUMMER20)");
+        TextField percentField = formField("Discount % (e.g. 15)");
+        DatePicker expiryPicker = new DatePicker();
+        expiryPicker.setPromptText("Expiry Date (optional)");
+        expiryPicker.setStyle("-fx-background-color: hsb(35, 12%, 20%); -fx-font-size: 14px;");
+        expiryPicker.setMaxWidth(Double.MAX_VALUE);
+        TextField maxUsesField = formField("Max Uses (optional)");
+
+        Button submit = submitBtn("Add Discount");
+        submit.setOnAction(e -> {
+            warn_empty.setVisible(false); warn_pct.setVisible(false);
+            warn_dup.setVisible(false); ok_msg.setVisible(false); err_msg.setVisible(false);
+
+            String expiryStr = expiryPicker.getValue() != null ? expiryPicker.getValue().toString() : "";
+            String result = Admin_Logic.addDiscount(sys.getConn(),
+                codeField.getText(), percentField.getText(), expiryStr, maxUsesField.getText());
+
+            switch (result) {
+                case "empty"           -> warn_empty.setVisible(true);
+                case "invalid_percent" -> warn_pct.setVisible(true);
+                case "duplicate"       -> warn_dup.setVisible(true);
+                case "ok"              -> {
+                    ok_msg.setVisible(true);
+                    codeField.clear(); percentField.clear();
+                    expiryPicker.setValue(null); maxUsesField.clear();
+                    refresh_discounts();
+                }
+                default -> err_msg.setVisible(true);
+            }
+        });
+
+        form.getChildren().addAll(title, warn_empty, warn_pct, warn_dup, ok_msg, err_msg,
+            codeField, percentField, expiryPicker, maxUsesField, submit);
         return form;
     }
 

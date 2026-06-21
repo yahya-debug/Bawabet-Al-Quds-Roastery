@@ -837,6 +837,108 @@ public class Admin_Logic {
     }
 
     // migrate existing Employee table to support warehouse employees (idempotent)
+    // ── Discount ─────────────────────────────────────────────────────────────
+
+    public static class DiscountRow {
+        private final int    discountId;
+        private final String code;
+        private final double percent;
+        private final String validUntil;
+        private final Integer maxUses;
+
+        public DiscountRow(int discountId, String code, double percent, String validUntil, Integer maxUses) {
+            this.discountId  = discountId;
+            this.code        = code;
+            this.percent     = percent;
+            this.validUntil  = validUntil;
+            this.maxUses     = maxUses;
+        }
+
+        public int     getDiscountId() { return discountId; }
+        public String  getCode()       { return code; }
+        public double  getPercent()    { return percent; }
+        public String  getValidUntil() { return validUntil; }
+        public Integer getMaxUses()    { return maxUses; }
+    }
+
+    public static List<DiscountRow> getDiscounts(Connection conn) {
+        List<DiscountRow> list = new ArrayList<>();
+        try {
+            ResultSet rs = conn.createStatement().executeQuery(
+                "SELECT discount_id, code, percent, valid_until, max_uses FROM Discount ORDER BY discount_id DESC");
+            while (rs.next()) {
+                int mu = rs.getInt("max_uses");
+                list.add(new DiscountRow(
+                    rs.getInt("discount_id"),
+                    rs.getString("code"),
+                    rs.getDouble("percent"),
+                    rs.getString("valid_until"),
+                    rs.wasNull() ? null : mu
+                ));
+            }
+        } catch (SQLException ex) { System.out.println(ex.getMessage()); }
+        return list;
+    }
+
+    public static String addDiscount(Connection conn, String code, String percentStr,
+                                     String validUntilStr, String maxUsesStr) {
+        if (code.isBlank() || percentStr.isBlank()) return "empty";
+        double percent;
+        try { percent = Double.parseDouble(percentStr.trim()); }
+        catch (NumberFormatException e) { return "invalid_percent"; }
+        if (percent < 0 || percent > 100) return "invalid_percent";
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO Discount (code, percent, valid_until, max_uses) VALUES (?, ?, ?, ?)");
+            ps.setString(1, code.trim().toUpperCase());
+            ps.setDouble(2, percent);
+            if (validUntilStr == null || validUntilStr.isBlank()) ps.setNull(3, java.sql.Types.DATE);
+            else ps.setString(3, validUntilStr.trim());
+            if (maxUsesStr == null || maxUsesStr.isBlank()) ps.setNull(4, java.sql.Types.INTEGER);
+            else {
+                try { ps.setInt(4, Integer.parseInt(maxUsesStr.trim())); }
+                catch (NumberFormatException e) { ps.setNull(4, java.sql.Types.INTEGER); }
+            }
+            ps.executeUpdate();
+            return "ok";
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+            if ("23000".equals(ex.getSQLState())) return "duplicate";
+            return "error";
+        }
+    }
+
+    public static boolean deleteDiscount(Connection conn, int discountId) {
+        try {
+            PreparedStatement ps = conn.prepareStatement("DELETE FROM Discount WHERE discount_id = ?");
+            ps.setInt(1, discountId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException ex) { System.out.println(ex.getMessage()); return false; }
+    }
+
+    /** Returns the DiscountRow if the code is valid and not expired; null otherwise. */
+    public static DiscountRow lookupDiscount(Connection conn, String code) {
+        if (code == null || code.isBlank()) return null;
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT discount_id, code, percent, valid_until, max_uses FROM Discount " +
+                "WHERE UPPER(code) = UPPER(?) AND (valid_until IS NULL OR valid_until >= CURDATE())");
+            ps.setString(1, code.trim());
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                int mu = rs.getInt("max_uses");
+                return new DiscountRow(
+                    rs.getInt("discount_id"),
+                    rs.getString("code"),
+                    rs.getDouble("percent"),
+                    rs.getString("valid_until"),
+                    rs.wasNull() ? null : mu
+                );
+            }
+        } catch (SQLException ex) { System.out.println(ex.getMessage()); }
+        return null;
+    }
+
     public static void migrateEmployeeSchema(Connection conn) {
         try {
             conn.createStatement().executeUpdate(
